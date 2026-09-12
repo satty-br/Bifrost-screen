@@ -230,9 +230,7 @@ var links = map[string]string{
 	"steam_id":          "https://steamid.io/",
 	"steam_privacidade": "https://steamcommunity.com/my/edit/settings",
 	"repositorio":       "https://github.com/satty-br/Bifrost-screen",
-	// Driver open-source usado para ler a temperatura da CPU, e os programas de
-	// monitoramento que o Bifrost também aproveita se já estiverem instalados.
-	"pawnio": "https://github.com/namazso/PawnIO",
+	// Programas de monitoramento que o Bifrost também aproveita se já estiverem instalados.
 	"lhm":    "https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases",
 	"hwinfo": "https://www.hwinfo.com/download/",
 }

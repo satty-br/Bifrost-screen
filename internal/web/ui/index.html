@@ -363,10 +363,9 @@ select.inp{padding-right:8px}
           <div class="alert" id="tempHelp" hidden style="margin-bottom:12px">
             <div style="flex:1">
               <h3 data-i18n="temp.missing_title">Sem leitura de temperatura</h3>
-              <p data-i18n="temp.missing_text">O Windows não entrega a temperatura da CPU para programas comuns: ela fica em registradores do processador que só o modo kernel lê. O Bifrost resolve isso sozinho com o PawnIO, um driver open-source e assinado — o mesmo que o LibreHardwareMonitor usa. É uma instalação silenciosa, uma janela do Windows pedindo permissão, e nenhum outro programa precisa ficar aberto.</p>
+              <p data-i18n="temp.missing_text">O Windows não entrega a temperatura da CPU para programas comuns: ela fica em registradores do processador que só o modo kernel lê. O Bifrost resolve isso sozinho, com um driver open-source e assinado. É uma instalação silenciosa, uma janela do Windows pedindo permissão, e nenhum outro programa precisa ficar aberto.</p>
               <div class="row">
                 <button class="btn primary" id="btnTempEnable" data-i18n="temp.enable">Ativar leitura de temperatura</button>
-                <button class="btn" data-link="pawnio" data-i18n="temp.about_driver">Sobre o driver ↗</button>
               </div>
               <p class="hint" id="tempHelpStatus" hidden></p>
             </div>
@@ -376,7 +375,7 @@ select.inp{padding-right:8px}
             <dt data-i18n="mancer.temp">Temperatura enviada</dt><dd id="mancerTemp">—</dd>
           </dl>
           <p class="hint" id="tempDriverOn" hidden>
-            <span data-i18n="temp.driver_on">Temperatura lida pelo driver PawnIO, sem nenhum programa extra aberto.</span>
+            <span data-i18n="temp.driver_on">Temperatura lida direto do processador, sem nenhum programa extra aberto.</span>
             <button class="btn" id="btnTempDisable" style="margin-left:8px" data-i18n="temp.disable">Desativar</button>
           </p>
           <p class="hint" id="mancerMacNote" hidden data-i18n="mancer.macos_note">No macOS este recurso não está disponível (exigiria acesso HID de baixo nível sem suporte nativo).</p>
@@ -566,13 +565,12 @@ const I18N = {
 "mancer.title":{pt:"Mostrador Mancer Mystic G1",en:"Mancer Mystic G1 display",es:"Pantalla Mancer Mystic G1",ja:"Mancer Mystic G1 ディスプレイ",zh:"Mancer Mystic G1 显示屏"},
 "mancer.enable_desc":{pt:"Manda a temperatura pro mostrador de 2 dígitos do bloco d'água Mancer Mystic G1 (detecção automática por USB).",en:"Sends the temperature to the Mancer Mystic G1 water block's 2-digit display (auto-detected over USB).",es:"Envía la temperatura al visor de 2 dígitos del bloque de agua Mancer Mystic G1 (detección automática por USB).",ja:"Mancer Mystic G1 ウォーターブロックの2桁ディスプレイに温度を送信します(USB自動検出)。",zh:"将温度发送到 Mancer Mystic G1 水冷头的 2 位数显示屏(通过 USB 自动检测)。"},
 "temp.missing_title":{pt:"Sem leitura de temperatura",en:"No temperature reading",es:"Sin lectura de temperatura",ja:"温度を取得できません",zh:"无法读取温度"},
-"temp.missing_text":{pt:"O Windows não entrega a temperatura da CPU para programas comuns: ela fica em registradores do processador que só o modo kernel lê. O Bifrost resolve isso sozinho com o PawnIO, um driver open-source e assinado — o mesmo que o LibreHardwareMonitor usa. É uma instalação silenciosa, uma janela do Windows pedindo permissão, e nenhum outro programa precisa ficar aberto.",en:"Windows does not hand CPU temperature to ordinary programs: it lives in processor registers only kernel mode can read. Bifrost can solve this on its own with PawnIO, an open-source signed driver — the same one LibreHardwareMonitor uses. One silent install, one Windows permission prompt, and no other program has to stay open.",es:"Windows no entrega la temperatura de la CPU a los programas comunes: está en registros del procesador que solo el modo kernel puede leer. Bifrost lo resuelve solo con PawnIO, un controlador open source y firmado, el mismo que usa LibreHardwareMonitor. Una instalación silenciosa, una ventana de permiso de Windows y ningún otro programa abierto.",ja:"Windows は CPU 温度を通常のプログラムには渡しません。カーネルモードでしか読めないプロセッサのレジスタにあるためです。Bifrost は LibreHardwareMonitor と同じ署名済みオープンソースドライバー PawnIO で自力で解決します。サイレントインストールと許可のダイアログが一度だけで、他のプログラムを開いたままにする必要はありません。",zh:"Windows 不会把 CPU 温度交给普通程序：它保存在只有内核模式才能读取的处理器寄存器中。Bifrost 可以用 PawnIO 自行解决——一个开源且已签名的驱动，与 LibreHardwareMonitor 使用的相同。一次静默安装、一次 Windows 权限提示，无需让其他程序保持开启。"},
+"temp.missing_text":{pt:"O Windows não entrega a temperatura da CPU para programas comuns: ela fica em registradores do processador que só o modo kernel lê. O Bifrost resolve isso sozinho, com um driver open-source e assinado. É uma instalação silenciosa, uma janela do Windows pedindo permissão, e nenhum outro programa precisa ficar aberto.",en:"Windows does not hand CPU temperature to ordinary programs: it lives in processor registers only kernel mode can read. Bifrost can solve this on its own, with an open-source signed driver. One silent install, one Windows permission prompt, and no other program has to stay open.",es:"Windows no entrega la temperatura de la CPU a los programas comunes: está en registros del procesador que solo el modo kernel puede leer. Bifrost lo resuelve solo, con un controlador open source y firmado. Una instalación silenciosa, una ventana de permiso de Windows y ningún otro programa abierto.",ja:"Windows は CPU 温度を通常のプログラムには渡しません。カーネルモードでしか読めないプロセッサのレジスタにあるためです。Bifrost は署名済みオープンソースドライバーで自力で解決します。サイレントインストールと許可のダイアログが一度だけで、他のプログラムを開いたままにする必要はありません。",zh:"Windows 不会把 CPU 温度交给普通程序：它保存在只有内核模式才能读取的处理器寄存器中。Bifrost 可以自行解决，使用一个开源且已签名的驱动。一次静默安装、一次 Windows 权限提示，无需让其他程序保持开启。"},
 "temp.enable":{pt:"Ativar leitura de temperatura",en:"Enable temperature reading",es:"Activar lectura de temperatura",ja:"温度の取得を有効にする",zh:"启用温度读取"},
-"temp.about_driver":{pt:"Sobre o driver ↗",en:"About the driver ↗",es:"Sobre el controlador ↗",ja:"ドライバーについて ↗",zh:"关于该驱动 ↗"},
 "temp.enabling":{pt:"Confirme a janela de permissão do Windows. Instalando o driver e ligando a leitura…",en:"Confirm the Windows permission prompt. Installing the driver and starting the reader…",es:"Confirma la ventana de permisos de Windows. Instalando el controlador e iniciando la lectura…",ja:"Windows の許可ダイアログを承認してください。ドライバーをインストールして読み取りを開始しています…",zh:"请确认 Windows 权限提示。正在安装驱动并启动读取…"},
 "temp.enabled":{pt:"Pronto: temperatura da CPU ativa.",en:"Done: CPU temperature is live.",es:"Listo: temperatura de la CPU activa.",ja:"完了: CPU 温度を取得しています。",zh:"完成：已开始读取 CPU 温度。"},
 "temp.enable_failed":{pt:"Não consegui ativar. Veja o diagnóstico (bifrost.exe --diagnostico).",en:"Could not enable it. Check the diagnostics (bifrost.exe --diagnostico).",es:"No se pudo activar. Revisa el diagnóstico (bifrost.exe --diagnostico).",ja:"有効にできませんでした。診断を確認してください (bifrost.exe --diagnostico)。",zh:"无法启用。请查看诊断 (bifrost.exe --diagnostico)。"},
-"temp.driver_on":{pt:"Temperatura lida pelo driver PawnIO, sem nenhum programa extra aberto.",en:"Temperature read by the PawnIO driver, with no extra program running.",es:"Temperatura leída por el controlador PawnIO, sin ningún programa extra abierto.",ja:"PawnIO ドライバーで温度を取得しています。追加のプログラムは不要です。",zh:"由 PawnIO 驱动读取温度，无需运行其他程序。"},
+"temp.driver_on":{pt:"Temperatura lida direto do processador, sem nenhum programa extra aberto.",en:"Temperature read directly from the processor, with no extra program running.",es:"Temperatura leída directamente del procesador, sin ningún programa extra abierto.",ja:"プロセッサから直接温度を取得しています。追加のプログラムは不要です。",zh:"直接从处理器读取温度，无需运行其他程序。"},
 "temp.disable":{pt:"Desativar",en:"Turn off",es:"Desactivar",ja:"無効にする",zh:"关闭"},
 "mancer.macos_note":{pt:"No macOS este recurso não está disponível (exigiria acesso HID de baixo nível sem suporte nativo).",en:"Not available on macOS (would require low-level HID access with no native support).",es:"No disponible en macOS (requeriría acceso HID de bajo nivel sin soporte nativo).",ja:"macOS では利用できません(ネイティブ非対応の低レベル HID アクセスが必要なため)。",zh:"macOS 上不可用(需要原生不支持的底层 HID 访问)。"},
 "mancer.connected":{pt:"Conectado",en:"Connected",es:"Conectado",ja:"接続済み",zh:"已连接"},
@@ -983,8 +981,7 @@ function renderState() {
     const ms = $("#mancerStatus");
     ms.textContent = !s.mancer.ativado ? t("mancer.off") : s.mancer.erro ? s.mancer.erro : s.mancer.conectado ? t("mancer.connected") : t("mancer.disconnected");
     const temp = s.sistema.cpu_temperatura;
-    const fonte = s.sistema.cpu_temperatura_fonte;
-    $("#mancerTemp").textContent = temp >= 0 ? Math.round(temp) + "°C" + (fonte ? " (" + fonte + ")" : "") : "—";
+    $("#mancerTemp").textContent = temp >= 0 ? Math.round(temp) + "°C" : "—";
     $("#mancerMacNote").hidden = sysOS !== "darwin";
     const driverLigado = !!(sensores && sensores.agente_ativo);
     $("#tempDriverOn").hidden = !driverLigado;
