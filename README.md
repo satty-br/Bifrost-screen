@@ -163,6 +163,13 @@ The panel is only served on `127.0.0.1` (not visible on the network) and rejects
 | Game doesn't show up | Click **Test** in the Steam tab. Games opened outside of Steam aren't detected. On the Web API, check the "Game details" privacy setting. |
 | The screen gets hot | Lower the brightness. These screens get hot above ~50%. |
 
+## Contributing
+
+Bug reports, feature requests and PRs are welcome — see
+[CONTRIBUTING.md](CONTRIBUTING.md) for how to set up a dev environment and the
+project's conventions. Found a security vulnerability? Please don't open a
+public issue — see [SECURITY.md](SECURITY.md) instead.
+
 ## License
 
 GPL-3.0-or-later. The screen protocol was ported from
