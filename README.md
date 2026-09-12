@@ -110,9 +110,10 @@ If you play on **another PC**, switch the source to **Steam Web API** in the Ste
 ### Mancer Mystic G1 display
 
 If you have a **Mancer Mystic G1** water block, its small 2-digit HID display (normally just showing "88")
-can be fed the live CPU temperature. Turn it on with the toggle in the **Connection** tab — the device
-is auto-detected over USB by its VID/PID (`0xAA88` / `0x8666`), no port to choose. It updates twice a
-second and shows "88" again if Bifrost stops or the connection drops.
+can be fed the live CPU temperature. **It's auto-detected over USB** by its VID/PID (`0xAA88` / `0x8666`) —
+plug it in and it shows up on its own in the **Connection** tab, no setup needed. If you'd rather not use it,
+click **Remove** on its card (you can add it back later from the **Add device** section). It updates twice
+a second and shows "88" again if Bifrost stops or the connection drops.
 
 This is an independent feature (not one of the rotating screens above) based on the reverse-engineered
 protocol from [dsmlucas/mancer-g1-cpu-temp-display](https://github.com/dsmlucas/mancer-g1-cpu-temp-display)

@@ -137,7 +137,8 @@ type GeneralConfig struct {
 
 // MancerConfig liga/desliga o envio da temperatura da CPU para o mostrador
 // embutido no bloco d'água Mancer Mystic G1 (detectado sozinho pelo VID/PID
-// do HID, sem precisar escolher porta).
+// do HID, sem precisar escolher porta). Ligado por padrão: se o dispositivo
+// não estiver conectado, a detecção simplesmente não encontra nada.
 type MancerConfig struct {
 	Enabled bool `json:"ativado"`
 }
@@ -160,6 +161,7 @@ func Default() Config {
 		},
 		Steam:   SteamConfig{Enabled: true, Source: "local", StatusSeconds: 15, LibrarySeconds: 300},
 		General: GeneralConfig{Autostart: false, OpenPanel: true, RefreshMillis: 1000, WebPort: 47017, Language: "auto", AutoUpdate: true},
+		Mancer:  MancerConfig{Enabled: true},
 	}
 }
 
