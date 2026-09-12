@@ -44,19 +44,27 @@ const (
 )
 
 type Config struct {
-	Display DisplayConfig `json:"tela"`
+	Devices []DeviceConfig `json:"dispositivos"`
 	Screens ScreensConfig `json:"telas"`
-	Mode    ModeConfig    `json:"modo"`
 	Theme   ThemeConfig   `json:"tema"`
 	Steam   SteamConfig   `json:"steam"`
 	General GeneralConfig `json:"geral"`
 }
 
-type DisplayConfig struct {
-	Port        string `json:"porta"`      // "AUTO" ou "COM3"
-	Revision    string `json:"revisao"`    // "A" ou "SIMULADO"
-	Orientation string `json:"orientacao"` // ver constantes Orient*
-	Brightness  int    `json:"brilho"`     // 0-100
+// DeviceConfig é uma tela USB configurada. O ID é interno e estável (não muda
+// ao reconectar); a Porta pode ser "AUTO" (pega qualquer tela livre detectada)
+// ou uma porta específica ("COM3", "/dev/ttyUSB0"...). Como os clones
+// Turing/UsbMonitor baratos costumam repetir o mesmo VID/PID/número de série
+// de fábrica, não dá pra identificar cada unidade física com certeza — só a
+// porta é garantidamente estável (no mesmo PC/mesma entrada USB).
+type DeviceConfig struct {
+	ID          string     `json:"id"`
+	Name        string     `json:"nome"`       // rótulo escolhido pelo usuário ("Tela esquerda"...)
+	Port        string     `json:"porta"`      // "AUTO" ou "COM3"
+	Revision    string     `json:"revisao"`    // "A" ou "SIMULADO"
+	Orientation string     `json:"orientacao"` // ver constantes Orient*
+	Brightness  int        `json:"brilho"`     // 0-100
+	Mode        ModeConfig `json:"modo"`
 }
 
 type ScreensConfig struct {
@@ -137,7 +145,7 @@ type GeneralConfig struct {
 // Default devolve a configuração de fábrica.
 func Default() Config {
 	return Config{
-		Display: DisplayConfig{Port: "AUTO", Revision: "A", Orientation: OrientPortrait, Brightness: 20},
+		Devices: []DeviceConfig{defaultDevice("principal")},
 		Screens: ScreensConfig{
 			Order:  append([]Screen(nil), AllScreens...),
 			Music:  MusicScreen{Enabled: true, ShowCover: true, ShowAlbum: true, ShowProgress: true, ShowWhenPaused: true},
@@ -145,7 +153,6 @@ func Default() Config {
 			System: SystemScreen{Enabled: true, ShowCPU: true, ShowGPU: true, ShowRAM: true, ShowNet: true, ShowDisk: true, ShowUptime: true, Disk: "C:"},
 			Clock:  ClockScreen{Enabled: true, Use24h: true, ShowSeconds: false, ShowDate: true},
 		},
-		Mode: ModeConfig{Type: ModeAuto, RotateSeconds: 10, Fixed: ScreenClock},
 		Theme: ThemeConfig{
 			AccentMusic: "#2dd4bf", AccentGame: "#66c0f4", AccentSystem: "#f59e0b", AccentClock: "#a5b4fc",
 			Background: "gradiente", BgColor: "#101116",
@@ -155,28 +162,68 @@ func Default() Config {
 	}
 }
 
+// defaultDevice devolve um dispositivo com as configurações de fábrica, com o ID dado.
+func defaultDevice(id string) DeviceConfig {
+	return DeviceConfig{
+		ID: id, Port: "AUTO", Revision: "A", Orientation: OrientPortrait, Brightness: 20,
+		Mode: ModeConfig{Type: ModeAuto, RotateSeconds: 10, Fixed: ScreenClock},
+	}
+}
+
+// maxDevices evita que a API deixe configurar uma quantidade absurda de telas.
+const maxDevices = 8
+
 var hexColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 // Normalize corrige valores fora do intervalo e preenche o que estiver faltando.
 func (c *Config) Normalize() {
 	d := Default()
 
-	c.Display.Port = strings.ToUpper(strings.TrimSpace(c.Display.Port))
-	if c.Display.Port == "" {
-		c.Display.Port = "AUTO"
+	if len(c.Devices) > maxDevices {
+		c.Devices = c.Devices[:maxDevices]
 	}
-	switch strings.ToUpper(c.Display.Revision) {
-	case "A", "SIMULADO":
-		c.Display.Revision = strings.ToUpper(c.Display.Revision)
-	default:
-		c.Display.Revision = d.Display.Revision
+	seenID := map[string]bool{}
+	nextAuto := 1
+	for i := range c.Devices {
+		dev := &c.Devices[i]
+		dev.ID = strings.TrimSpace(dev.ID)
+		for dev.ID == "" || seenID[dev.ID] {
+			dev.ID = fmt.Sprintf("dispositivo-%d", nextAuto)
+			nextAuto++
+		}
+		seenID[dev.ID] = true
+		dev.Name = strings.TrimSpace(dev.Name)
+
+		dev.Port = strings.ToUpper(strings.TrimSpace(dev.Port))
+		if dev.Port == "" {
+			dev.Port = "AUTO"
+		}
+		switch strings.ToUpper(dev.Revision) {
+		case "A", "SIMULADO":
+			dev.Revision = strings.ToUpper(dev.Revision)
+		default:
+			dev.Revision = d.Devices[0].Revision
+		}
+		switch dev.Orientation {
+		case OrientPortrait, OrientPortraitReverse, OrientLandscape, OrientLandscapeReverse:
+		default:
+			dev.Orientation = d.Devices[0].Orientation
+		}
+		dev.Brightness = clamp(dev.Brightness, 0, 100)
+
+		switch dev.Mode.Type {
+		case ModeAuto, ModeRotate, ModeFixed:
+		default:
+			dev.Mode.Type = ModeAuto
+		}
+		dev.Mode.RotateSeconds = clamp(dev.Mode.RotateSeconds, 3, 600)
+		if !isKnown(dev.Mode.Fixed) {
+			dev.Mode.Fixed = ScreenClock
+		}
 	}
-	switch c.Display.Orientation {
-	case OrientPortrait, OrientPortraitReverse, OrientLandscape, OrientLandscapeReverse:
-	default:
-		c.Display.Orientation = d.Display.Orientation
+	if len(c.Devices) == 0 {
+		c.Devices = []DeviceConfig{defaultDevice("principal")}
 	}
-	c.Display.Brightness = clamp(c.Display.Brightness, 0, 100)
 
 	// Ordem: mantém as conhecidas, sem repetição, e completa com as que faltarem.
 	seen := map[Screen]bool{}
@@ -199,16 +246,6 @@ func (c *Config) Normalize() {
 	c.Screens.System.Disk = strings.ToUpper(strings.TrimRight(strings.TrimSpace(c.Screens.System.Disk), `\/`))
 	if !strings.HasSuffix(c.Screens.System.Disk, ":") {
 		c.Screens.System.Disk += ":"
-	}
-
-	switch c.Mode.Type {
-	case ModeAuto, ModeRotate, ModeFixed:
-	default:
-		c.Mode.Type = ModeAuto
-	}
-	c.Mode.RotateSeconds = clamp(c.Mode.RotateSeconds, 3, 600)
-	if !isKnown(c.Mode.Fixed) {
-		c.Mode.Fixed = ScreenClock
 	}
 
 	fixColor(&c.Theme.AccentMusic, d.Theme.AccentMusic)
@@ -331,9 +368,35 @@ func Open(dir string) (*Store, error) {
 		_ = os.WriteFile(s.path+".invalido", data, 0o644)
 		cfg = Default()
 	}
+	migrateSingleDevice(data, &cfg)
 	cfg.Normalize()
 	s.cfg = cfg
 	return s, nil
+}
+
+// migrateSingleDevice converte um config.json de antes do suporte a múltiplas
+// telas (chaves "tela"/"modo" no nível raiz) para o novo formato com "dispositivos".
+func migrateSingleDevice(data []byte, cfg *Config) {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return
+	}
+	if _, hasNewFormat := raw["dispositivos"]; hasNewFormat {
+		return
+	}
+	var legacy struct {
+		Display *DeviceConfig `json:"tela"`
+		Mode    *ModeConfig   `json:"modo"`
+	}
+	if err := json.Unmarshal(data, &legacy); err != nil || legacy.Display == nil {
+		return
+	}
+	dev := *legacy.Display
+	dev.ID = "principal"
+	if legacy.Mode != nil {
+		dev.Mode = *legacy.Mode
+	}
+	cfg.Devices = []DeviceConfig{dev}
 }
 
 func (s *Store) Path() string { return s.path }
@@ -382,5 +445,6 @@ func (s *Store) save(c Config) error {
 
 func clone(c Config) Config {
 	c.Screens.Order = append([]Screen(nil), c.Screens.Order...)
+	c.Devices = append([]DeviceConfig(nil), c.Devices...)
 	return c
 }

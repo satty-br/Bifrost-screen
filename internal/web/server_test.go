@@ -253,7 +253,7 @@ func TestConfigEndpoints(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg.Display.Brightness = 77
+	cfg.Devices[0].Brightness = 77
 	data, _ := json.Marshal(cfg)
 	resp2 := do(t, "PUT", srv.URL()+"api/config", strings.NewReader(string(data)), true)
 	defer resp2.Body.Close()
@@ -265,8 +265,8 @@ func TestConfigEndpoints(t *testing.T) {
 	if err := json.NewDecoder(resp2.Body).Decode(&saved); err != nil {
 		t.Fatal(err)
 	}
-	if saved.Display.Brightness != 77 {
-		t.Errorf("brilho não foi salvo, veio %d", saved.Display.Brightness)
+	if saved.Devices[0].Brightness != 77 {
+		t.Errorf("brilho não foi salvo, veio %d", saved.Devices[0].Brightness)
 	}
 
 	// corpo inválido.
@@ -292,7 +292,7 @@ func TestConfigEndpoints(t *testing.T) {
 	if err := json.NewDecoder(resp5.Body).Decode(&reset); err != nil {
 		t.Fatal(err)
 	}
-	if reset.Display.Brightness != config.Default().Display.Brightness {
+	if reset.Devices[0].Brightness != config.Default().Devices[0].Brightness {
 		t.Errorf("restaurar padrão deveria zerar o brilho customizado")
 	}
 }

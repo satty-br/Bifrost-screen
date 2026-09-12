@@ -1,4 +1,4 @@
-// Package app junta tudo: escolhe a tela, desenha e envia para o display.
+// Package app junta tudo: escolhe a tela, desenha e envia para cada display.
 package app
 
 import (
@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 
@@ -35,8 +36,10 @@ const (
 	StatusSimulated  = "simulada"
 )
 
-// State é o resumo mostrado no painel.
-type State struct {
+// DeviceState é o resumo de UM dispositivo (uma tela USB), mostrado no painel.
+type DeviceState struct {
+	ID         string             `json:"id"`
+	Name       string             `json:"nome"`
 	Status     string             `json:"status"`
 	StatusText string             `json:"status_texto"`
 	Port       string             `json:"porta"`
@@ -44,24 +47,25 @@ type State struct {
 	Paused     bool               `json:"pausado"`
 	Pinned     bool               `json:"fixada_manual"`
 	Conflicts  []winutil.Conflict `json:"conflitos"`
-	Media      media.Info         `json:"musica"`
-	MediaError string             `json:"erro_musica"`
-	Steam      steam.Status       `json:"steam"`
-	SteamError string             `json:"erro_steam"`
-	System     sysinfo.Stats      `json:"sistema"`
 	FrameID    uint64             `json:"frame"`
 	Active     []config.Screen    `json:"telas_ativas"`
-	Version    string             `json:"versao"`
-	Update     *update.Release    `json:"atualizacao,omitempty"`
 }
 
-type App struct {
-	Version string
-	store   *config.Store
-	media   *media.Reader
-	steam   *steam.Client
-	sys     *sysinfo.Sampler
-	updater *update.Checker
+// State é o resumo mostrado no painel.
+type State struct {
+	Devices    []DeviceState   `json:"dispositivos"`
+	Media      media.Info      `json:"musica"`
+	MediaError string          `json:"erro_musica"`
+	Steam      steam.Status    `json:"steam"`
+	SteamError string          `json:"erro_steam"`
+	System     sysinfo.Stats   `json:"sistema"`
+	Version    string          `json:"versao"`
+	Update     *update.Release `json:"atualizacao,omitempty"`
+}
+
+// device é o estado ao vivo de um dispositivo configurado (uma tela USB).
+type device struct {
+	id string
 
 	mu          sync.Mutex
 	display     lcd.Display
@@ -79,21 +83,84 @@ type App struct {
 	pinUntil    time.Time
 	rotateIdx   int
 	rotateAt    time.Time
-	applied     config.DisplayConfig
+	applied     config.DeviceConfig
 	reconnect   chan struct{}
 	forceRedraw bool
+	cancel      context.CancelFunc
+}
+
+func newDevice(id string) *device {
+	return &device{id: id, status: StatusConnecting, reconnect: make(chan struct{}, 1)}
+}
+
+// portClaims coordena qual dispositivo em modo "AUTO" fica com qual porta,
+// pra dois dispositivos não brigarem pela mesma tela detectada. Como os
+// clones baratos costumam repetir o mesmo VID/PID/número de série de
+// fábrica, não dá pra ter certeza de qual unidade física é qual — só que
+// cada porta só é usada por um dispositivo de cada vez.
+type portClaims struct {
+	mu      sync.Mutex
+	claimed map[string]string // nome da porta -> ID do dispositivo que está usando
+}
+
+func newPortClaims() *portClaims { return &portClaims{claimed: map[string]string{}} }
+
+func (p *portClaims) claim(deviceID string) (string, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	ports, err := lcd.ListPorts()
+	if err != nil {
+		return "", err
+	}
+	sort.Slice(ports, func(i, j int) bool { return ports[i].Name < ports[j].Name })
+	for _, port := range ports {
+		if !port.IsScreen {
+			continue
+		}
+		if holder, ok := p.claimed[port.Name]; ok && holder != deviceID {
+			continue
+		}
+		p.claimed[port.Name] = deviceID
+		return port.Name, nil
+	}
+	return "", lcd.ErrNotFound
+}
+
+func (p *portClaims) release(deviceID string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	for port, holder := range p.claimed {
+		if holder == deviceID {
+			delete(p.claimed, port)
+		}
+	}
+}
+
+type App struct {
+	Version string
+	store   *config.Store
+	media   *media.Reader
+	steam   *steam.Client
+	sys     *sysinfo.Sampler
+	updater *update.Checker
+	claims  *portClaims
+
+	devMu   sync.RWMutex
+	rootCtx context.Context
+	devices map[string]*device
+	order   []string // IDs na ordem da configuração, pra State() sair estável
 }
 
 func New(store *config.Store, cacheDir, version string) *App {
 	a := &App{
-		Version:   version,
-		store:     store,
-		media:     &media.Reader{},
-		steam:     steam.New(cacheDir),
-		sys:       &sysinfo.Sampler{},
-		updater:   update.NewChecker(version),
-		status:    StatusConnecting,
-		reconnect: make(chan struct{}, 1),
+		Version: version,
+		store:   store,
+		media:   &media.Reader{},
+		steam:   steam.New(cacheDir),
+		sys:     &sysinfo.Sampler{},
+		updater: update.NewChecker(version),
+		claims:  newPortClaims(),
+		devices: map[string]*device{},
 	}
 	store.OnChange(a.onConfig)
 	return a
@@ -115,13 +182,17 @@ func steamSettings(c config.Config) steam.Settings {
 
 // Run inicia tudo e bloqueia até ctx terminar.
 func (a *App) Run(ctx context.Context) {
+	a.devMu.Lock()
+	a.rootCtx = ctx
+	a.devMu.Unlock()
+
 	cfg := a.store.Get()
 	a.media.Start(time.Second)
 	a.sys.SetDisk(cfg.Screens.System.Disk)
 	a.sys.Start(time.Second)
 	a.steam.Configure(steamSettings(cfg))
 	go a.steam.Run(ctx)
-	go a.connectionLoop(ctx)
+	a.syncDevices(ctx, cfg.Devices)
 	if cfg.General.AutoUpdate {
 		a.updater.Start(ctx, 6*time.Hour)
 	}
@@ -131,11 +202,15 @@ func (a *App) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			a.mu.Lock()
-			if a.display != nil {
-				a.display.Close()
+			a.devMu.RLock()
+			for _, d := range a.devices {
+				d.mu.Lock()
+				if d.display != nil {
+					d.display.Close()
+				}
+				d.mu.Unlock()
 			}
-			a.mu.Unlock()
+			a.devMu.RUnlock()
 			return
 		case <-ticker.C:
 			a.tick()
@@ -144,141 +219,231 @@ func (a *App) Run(ctx context.Context) {
 	}
 }
 
-// onConfig aplica mudanças de configuração que afetam a tela.
+// syncDevices cria/encerra as goroutines de conexão pra acompanhar a lista
+// configurada (chamado no início do Run e sempre que a lista de dispositivos muda).
+func (a *App) syncDevices(ctx context.Context, cfgs []config.DeviceConfig) {
+	a.devMu.Lock()
+	defer a.devMu.Unlock()
+
+	want := map[string]bool{}
+	order := make([]string, 0, len(cfgs))
+	for _, dc := range cfgs {
+		want[dc.ID] = true
+		order = append(order, dc.ID)
+	}
+	a.order = order
+
+	for id, d := range a.devices {
+		if !want[id] {
+			d.cancel()
+			a.claims.release(id)
+			delete(a.devices, id)
+		}
+	}
+	for _, dc := range cfgs {
+		if _, ok := a.devices[dc.ID]; ok {
+			continue
+		}
+		d := newDevice(dc.ID)
+		devCtx, cancel := context.WithCancel(ctx)
+		d.cancel = cancel
+		a.devices[dc.ID] = d
+		go a.connectionLoop(devCtx, d)
+	}
+}
+
+// deviceByID devolve o estado ao vivo de um dispositivo (ou nil se não existir).
+func (a *App) deviceByID(id string) *device {
+	a.devMu.RLock()
+	defer a.devMu.RUnlock()
+	return a.devices[id]
+}
+
+func deviceConfig(cfgs []config.DeviceConfig, id string) (config.DeviceConfig, bool) {
+	for _, dc := range cfgs {
+		if dc.ID == id {
+			return dc, true
+		}
+	}
+	return config.DeviceConfig{}, false
+}
+
+// onConfig aplica mudanças de configuração que afetam as telas.
 func (a *App) onConfig(c config.Config) {
 	a.steam.Configure(steamSettings(c))
 	a.sys.SetDisk(c.Screens.System.Disk)
 	if err := winutil.SetAutostart(c.General.Autostart); err != nil {
 		log.Printf("não consegui ajustar a inicialização com o Windows: %v", err)
 	}
-	a.mu.Lock()
-	prev := a.applied
-	disp := a.display
-	status := a.status
-	a.forceRedraw = true
-	a.mu.Unlock()
-	// re-traduz o texto de status atual (ex: "Conectada em X") se o idioma mudou.
+
+	a.devMu.RLock()
+	root := a.rootCtx
+	a.devMu.RUnlock()
+	if root != nil {
+		a.syncDevices(root, c.Devices)
+	}
+
 	lang := c.ResolvedLanguage()
-	switch status {
-	case StatusConnected:
-		if disp != nil {
-			a.setStatus(StatusConnected, i18n.T(lang, "app.connected", disp.PortName()))
+	for _, dc := range c.Devices {
+		d := a.deviceByID(dc.ID)
+		if d == nil {
+			continue
 		}
-	case StatusSimulated:
-		a.setStatus(StatusSimulated, i18n.T(lang, "app.simulated"))
+		d.mu.Lock()
+		prev := d.applied
+		disp := d.display
+		status := d.status
+		d.forceRedraw = true
+		d.mu.Unlock()
+
+		// re-traduz o texto de status atual (ex: "Conectada em X") se o idioma mudou.
+		switch status {
+		case StatusConnected:
+			if disp != nil {
+				a.setStatus(d, StatusConnected, i18n.T(lang, "app.connected", disp.PortName()))
+			}
+		case StatusSimulated:
+			a.setStatus(d, StatusSimulated, i18n.T(lang, "app.simulated"))
+		}
+
+		if prev.Port != dc.Port || prev.Revision != dc.Revision {
+			a.Reconnect(dc.ID)
+			continue
+		}
+		if disp == nil {
+			d.mu.Lock()
+			d.applied = dc
+			d.mu.Unlock()
+			continue
+		}
+		if prev.Brightness != dc.Brightness {
+			_ = disp.SetBrightness(dc.Brightness)
+		}
+		if prev.Orientation != dc.Orientation {
+			_ = disp.SetOrientation(lcd.ParseOrientation(dc.Orientation))
+			d.mu.Lock()
+			d.sent = nil
+			d.mu.Unlock()
+		}
+		d.mu.Lock()
+		d.applied = dc
+		d.mu.Unlock()
 	}
-	if prev.Port != c.Display.Port || prev.Revision != c.Display.Revision {
-		a.Reconnect()
-		return
-	}
-	if disp == nil {
-		return
-	}
-	if prev.Brightness != c.Display.Brightness {
-		_ = disp.SetBrightness(c.Display.Brightness)
-	}
-	if prev.Orientation != c.Display.Orientation {
-		_ = disp.SetOrientation(lcd.ParseOrientation(c.Display.Orientation))
-		a.mu.Lock()
-		a.sent = nil
-		a.mu.Unlock()
-	}
-	a.mu.Lock()
-	a.applied = c.Display
-	a.mu.Unlock()
 }
 
-// Reconnect derruba a conexão atual e tenta de novo.
-func (a *App) Reconnect() {
-	select {
-	case a.reconnect <- struct{}{}:
-	default:
+// Reconnect derruba a conexão de um dispositivo e tenta de novo.
+// id vazio ("") reconecta todos (usado depois de encerrar conflitos).
+func (a *App) Reconnect(id string) {
+	a.devMu.RLock()
+	defer a.devMu.RUnlock()
+	if id == "" {
+		for _, d := range a.devices {
+			select {
+			case d.reconnect <- struct{}{}:
+			default:
+			}
+		}
+		return
+	}
+	if d, ok := a.devices[id]; ok {
+		select {
+		case d.reconnect <- struct{}{}:
+		default:
+		}
 	}
 }
 
-func (a *App) setStatus(s, text string) {
-	a.mu.Lock()
-	changed := a.status != s || a.statusText != text
-	a.status, a.statusText = s, text
-	a.mu.Unlock()
+func (a *App) setStatus(d *device, s, text string) {
+	d.mu.Lock()
+	changed := d.status != s || d.statusText != text
+	d.status, d.statusText = s, text
+	d.mu.Unlock()
 	if changed {
-		log.Printf("tela: %s — %s", s, text)
+		log.Printf("tela %s: %s — %s", d.id, s, text)
 	}
 }
 
-func (a *App) connectionLoop(ctx context.Context) {
+func (a *App) connectionLoop(ctx context.Context, d *device) {
+	defer a.claims.release(d.id)
 	for ctx.Err() == nil {
 		cfg := a.store.Get()
+		dc, ok := deviceConfig(cfg.Devices, d.id)
+		if !ok {
+			return // dispositivo foi removido da configuração
+		}
 		lang := cfg.ResolvedLanguage()
-		var d lcd.Display
-		if cfg.Display.Revision == "SIMULADO" {
-			d = lcd.NewSimulated()
+		var disp lcd.Display
+		if dc.Revision == "SIMULADO" {
+			disp = lcd.NewSimulated()
 		} else {
-			d = lcd.NewRevA(cfg.Display.Port, lcd.OpenSerial, lcd.DetectRevA)
+			detect := func() (string, error) { return a.claims.claim(d.id) }
+			disp = lcd.NewRevA(dc.Port, lcd.OpenSerial, detect)
 		}
-		a.setStatus(StatusConnecting, i18n.T(lang, "app.connecting"))
-		err := d.Open()
+		a.setStatus(d, StatusConnecting, i18n.T(lang, "app.connecting"))
+		err := disp.Open()
 		if err == nil {
-			err = d.SetBrightness(cfg.Display.Brightness)
+			err = disp.SetBrightness(dc.Brightness)
 		}
 		if err == nil {
-			err = d.SetOrientation(lcd.ParseOrientation(cfg.Display.Orientation))
+			err = disp.SetOrientation(lcd.ParseOrientation(dc.Orientation))
 		}
 		if err != nil {
-			d.Close()
-			a.handleConnectError(err, lang)
-			if a.wait(ctx, 5*time.Second) {
+			disp.Close()
+			a.claims.release(d.id)
+			a.handleConnectError(d, err, lang)
+			if a.wait(ctx, d, 5*time.Second) {
 				continue
 			}
 			return
 		}
-		a.mu.Lock()
-		a.display = d
-		a.sent = nil
-		a.applied = cfg.Display
-		a.conflicts = nil
-		a.mu.Unlock()
-		if cfg.Display.Revision == "SIMULADO" {
-			a.setStatus(StatusSimulated, i18n.T(lang, "app.simulated"))
+		d.mu.Lock()
+		d.display = disp
+		d.sent = nil
+		d.applied = dc
+		d.conflicts = nil
+		d.mu.Unlock()
+		if dc.Revision == "SIMULADO" {
+			a.setStatus(d, StatusSimulated, i18n.T(lang, "app.simulated"))
 		} else {
-			a.setStatus(StatusConnected, i18n.T(lang, "app.connected", d.PortName()))
+			a.setStatus(d, StatusConnected, i18n.T(lang, "app.connected", disp.PortName()))
 		}
 
-		// Fica conectado até pedirem reconexão ou dar erro de escrita.
+		// Fica conectado até pedirem reconexão ou o dispositivo ser removido.
 		select {
 		case <-ctx.Done():
-		case <-a.reconnect:
+		case <-d.reconnect:
 		}
-		a.mu.Lock()
-		a.display = nil
-		a.mu.Unlock()
-		d.Close()
+		d.mu.Lock()
+		d.display = nil
+		d.mu.Unlock()
+		disp.Close()
+		a.claims.release(d.id)
 	}
 }
 
-func (a *App) handleConnectError(err error, lang i18n.Lang) {
+func (a *App) handleConnectError(d *device, err error, lang i18n.Lang) {
 	switch {
 	case errors.Is(err, lcd.ErrPortBusy):
 		conf := winutil.FindConflicts()
-		a.mu.Lock()
-		a.conflicts = conf
-		a.mu.Unlock()
-		a.setStatus(StatusBusy, i18n.T(lang, "app.port_busy"))
+		d.mu.Lock()
+		d.conflicts = conf
+		d.mu.Unlock()
+		a.setStatus(d, StatusBusy, i18n.T(lang, "app.port_busy"))
 	case errors.Is(err, lcd.ErrNotFound):
-		a.setStatus(StatusNotFound, i18n.T(lang, "app.not_found"))
+		a.setStatus(d, StatusNotFound, i18n.T(lang, "app.not_found"))
 	default:
-		a.setStatus(StatusError, err.Error())
+		a.setStatus(d, StatusError, err.Error())
 	}
 }
 
 // wait espera d ou um pedido de reconexão; devolve false se ctx acabou.
-func (a *App) wait(ctx context.Context, d time.Duration) bool {
+func (a *App) wait(ctx context.Context, d *device, dur time.Duration) bool {
 	select {
 	case <-ctx.Done():
 		return false
-	case <-a.reconnect:
+	case <-d.reconnect:
 		return true
-	case <-time.After(d):
+	case <-time.After(dur):
 		return true
 	}
 }
@@ -307,24 +472,24 @@ func (a *App) activeScreens(c config.Config, m media.Info, st steam.Status) []co
 	return out
 }
 
-// choose decide a tela da vez. Precisa ser chamado com a.mu travado.
-func (a *App) choose(now time.Time, c config.Config, active []config.Screen) config.Screen {
-	if a.pin != "" && now.Before(a.pinUntil) {
-		return a.pin
+// choose decide a tela da vez pro dispositivo d. Precisa ser chamado com d.mu travado.
+func (a *App) choose(d *device, now time.Time, mode config.ModeConfig, active []config.Screen) config.Screen {
+	if d.pin != "" && now.Before(d.pinUntil) {
+		return d.pin
 	}
-	a.pin = ""
-	switch c.Mode.Type {
+	d.pin = ""
+	switch mode.Type {
 	case config.ModeFixed:
-		return c.Mode.Fixed
+		return mode.Fixed
 	case config.ModeRotate:
 		if len(active) == 0 {
 			return config.ScreenClock
 		}
-		if now.After(a.rotateAt) {
-			a.rotateIdx++
-			a.rotateAt = now.Add(time.Duration(c.Mode.RotateSeconds) * time.Second)
+		if now.After(d.rotateAt) {
+			d.rotateIdx++
+			d.rotateAt = now.Add(time.Duration(mode.RotateSeconds) * time.Second)
 		}
-		return active[a.rotateIdx%len(active)]
+		return active[d.rotateIdx%len(active)]
 	}
 	if len(active) == 0 {
 		return config.ScreenClock
@@ -339,38 +504,57 @@ func (a *App) tick() {
 	st := a.steam.Get()
 	sys := a.sys.Get()
 	active := a.activeScreens(cfg, m, st)
+	in := render.Input{Now: now, Cfg: cfg, Media: m, Steam: st, System: sys,
+		Lang: cfg.ResolvedLanguage(), SteamReady: cfg.Steam.Enabled && a.steam.Ready()}
 
-	a.mu.Lock()
-	if a.paused && a.frame != nil {
-		a.mu.Unlock()
+	a.devMu.RLock()
+	devices := make([]*device, 0, len(a.order))
+	for _, id := range a.order {
+		if d, ok := a.devices[id]; ok {
+			devices = append(devices, d)
+		}
+	}
+	a.devMu.RUnlock()
+
+	for _, d := range devices {
+		dc, ok := deviceConfig(cfg.Devices, d.id)
+		if !ok {
+			continue
+		}
+		a.tickDevice(d, dc, now, cfg, in, active)
+	}
+}
+
+func (a *App) tickDevice(d *device, dc config.DeviceConfig, now time.Time, cfg config.Config, in render.Input, active []config.Screen) {
+	d.mu.Lock()
+	if d.paused && d.frame != nil {
+		d.mu.Unlock()
 		return
 	}
-	screen := a.choose(now, cfg, active)
-	a.screen = screen
-	disp := a.display
-	a.mu.Unlock()
+	screen := a.choose(d, now, dc.Mode, active)
+	d.screen = screen
+	disp := d.display
+	d.mu.Unlock()
 
 	w, h := 320, 480
-	if lcd.ParseOrientation(cfg.Display.Orientation).IsLandscape() {
+	if lcd.ParseOrientation(dc.Orientation).IsLandscape() {
 		w, h = 480, 320
 	}
 	if disp != nil {
 		w, h = disp.Size()
 	}
 
-	in := render.Input{Now: now, Cfg: cfg, Media: m, Steam: st, System: sys,
-		Lang: cfg.ResolvedLanguage(), SteamReady: cfg.Steam.Enabled && a.steam.Ready()}
 	img := render.Draw(screen, w, h, in)
 
-	a.mu.Lock()
-	a.frame = img
-	a.frameID++
-	prev := a.sent
-	if a.forceRedraw {
+	d.mu.Lock()
+	d.frame = img
+	d.frameID++
+	prev := d.sent
+	if d.forceRedraw {
 		prev = nil
-		a.forceRedraw = false
+		d.forceRedraw = false
 	}
-	a.mu.Unlock()
+	d.mu.Unlock()
 
 	if disp == nil {
 		return
@@ -380,67 +564,110 @@ func (a *App) tick() {
 		return
 	}
 	if err := disp.Draw(img, r); err != nil {
-		log.Printf("erro enviando para a tela: %v", err)
-		a.setStatus(StatusError, i18n.T(cfg.ResolvedLanguage(), "app.lost_connection"))
-		a.Reconnect()
+		log.Printf("erro enviando para a tela %s: %v", d.id, err)
+		a.setStatus(d, StatusError, i18n.T(cfg.ResolvedLanguage(), "app.lost_connection"))
+		a.Reconnect(d.id)
 		return
 	}
-	a.mu.Lock()
-	a.sent = img
-	a.mu.Unlock()
+	d.mu.Lock()
+	d.sent = img
+	d.mu.Unlock()
 }
 
 // --- controles usados pelo painel e pela bandeja
 
-func (a *App) Next(delta int) {
+// Next avança (ou volta, com delta negativo) a tela do dispositivo id.
+// id vazio ("") aplica em todos os dispositivos.
+func (a *App) Next(id string, delta int) {
+	if id == "" {
+		a.devMu.RLock()
+		ids := make([]string, 0, len(a.devices))
+		for devID := range a.devices {
+			ids = append(ids, devID)
+		}
+		a.devMu.RUnlock()
+		for _, devID := range ids {
+			a.Next(devID, delta)
+		}
+		return
+	}
+	d := a.deviceByID(id)
+	if d == nil {
+		return
+	}
 	cfg := a.store.Get()
+	dc, ok := deviceConfig(cfg.Devices, id)
+	if !ok {
+		return
+	}
 	active := a.activeScreens(cfg, a.media.Get(), a.steam.Get())
 	if len(active) == 0 {
 		return
 	}
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	cur := 0
 	for i, s := range active {
-		if s == a.screen {
+		if s == d.screen {
 			cur = i
 		}
 	}
 	next := active[((cur+delta)%len(active)+len(active))%len(active)]
-	a.pin = next
-	a.pinUntil = time.Now().Add(time.Minute)
-	a.rotateIdx = cur + delta
-	a.rotateAt = time.Now().Add(time.Duration(cfg.Mode.RotateSeconds) * time.Second)
-	a.paused = false
+	d.pin = next
+	d.pinUntil = time.Now().Add(time.Minute)
+	d.rotateIdx = cur + delta
+	d.rotateAt = time.Now().Add(time.Duration(dc.Mode.RotateSeconds) * time.Second)
+	d.paused = false
 }
 
-func (a *App) SetPaused(p bool) {
-	a.mu.Lock()
-	a.paused = p
-	a.mu.Unlock()
+// SetPaused pausa/retoma o dispositivo id. id vazio ("") aplica em todos.
+func (a *App) SetPaused(id string, p bool) {
+	if id == "" {
+		a.devMu.RLock()
+		defer a.devMu.RUnlock()
+		for _, d := range a.devices {
+			d.mu.Lock()
+			d.paused = p
+			d.mu.Unlock()
+		}
+		return
+	}
+	if d := a.deviceByID(id); d != nil {
+		d.mu.Lock()
+		d.paused = p
+		d.mu.Unlock()
+	}
 }
 
-func (a *App) Paused() bool {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	return a.paused
+func (a *App) Paused(id string) bool {
+	d := a.deviceByID(id)
+	if d == nil {
+		return false
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.paused
 }
 
-// KillConflicts encerra os programas que prendem a porta e reconecta.
+// KillConflicts encerra os programas que prendem a porta e reconecta todos os dispositivos.
 func (a *App) KillConflicts(pids []uint32) error {
 	if len(pids) == 0 {
-		a.mu.Lock()
-		for _, c := range a.conflicts {
-			pids = append(pids, c.PID)
+		a.devMu.RLock()
+		for _, d := range a.devices {
+			d.mu.Lock()
+			for _, c := range d.conflicts {
+				pids = append(pids, c.PID)
+			}
+			d.mu.Unlock()
 		}
-		a.mu.Unlock()
+		a.devMu.RUnlock()
 	}
 	if err := winutil.KillElevated(pids); err != nil {
 		return err
 	}
 	go func() {
 		time.Sleep(2 * time.Second)
-		a.Reconnect()
+		a.Reconnect("")
 	}()
 	return nil
 }
@@ -448,18 +675,42 @@ func (a *App) KillConflicts(pids []uint32) error {
 func (a *App) State() State {
 	cfg := a.store.Get()
 	m, st := a.media.Get(), a.steam.Get()
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	port := ""
-	if a.display != nil {
-		port = a.display.PortName()
+	active := a.activeScreens(cfg, m, st)
+
+	a.devMu.RLock()
+	order := append([]string(nil), a.order...)
+	devices := make(map[string]*device, len(a.devices))
+	for id, d := range a.devices {
+		devices[id] = d
+	}
+	a.devMu.RUnlock()
+
+	names := map[string]string{}
+	for _, dc := range cfg.Devices {
+		names[dc.ID] = dc.Name
+	}
+
+	out := make([]DeviceState, 0, len(order))
+	for _, id := range order {
+		d, ok := devices[id]
+		if !ok {
+			continue
+		}
+		d.mu.Lock()
+		port := ""
+		if d.display != nil {
+			port = d.display.PortName()
+		}
+		out = append(out, DeviceState{
+			ID: id, Name: names[id], Status: d.status, StatusText: d.statusText, Port: port,
+			Screen: d.screen, Paused: d.paused, Pinned: d.pin != "" && time.Now().Before(d.pinUntil),
+			Conflicts: d.conflicts, FrameID: d.frameID, Active: active,
+		})
+		d.mu.Unlock()
 	}
 	return State{
-		Status: a.status, StatusText: a.statusText, Port: port, Screen: a.screen, Paused: a.paused,
-		Pinned: a.pin != "" && time.Now().Before(a.pinUntil), Conflicts: a.conflicts,
-		Media: m, MediaError: a.media.LastError(), Steam: st, SteamError: a.steam.LastError(),
-		System: a.sys.Get(), FrameID: a.frameID, Active: a.activeScreens(cfg, m, st), Version: a.Version,
-		Update: a.updater.Available(),
+		Devices: out, Media: m, MediaError: a.media.LastError(), Steam: st, SteamError: a.steam.LastError(),
+		System: a.sys.Get(), Version: a.Version, Update: a.updater.Available(),
 	}
 }
 
@@ -502,27 +753,34 @@ func (a *App) InstallUpdate(ctx context.Context) error {
 	return nil
 }
 
-// PreviewPNG devolve o frame atual em PNG (com cache por frame).
-func (a *App) PreviewPNG() ([]byte, uint64) {
-	a.mu.Lock()
-	img, id := a.frame, a.frameID
-	if a.pngID == id && a.pngCache != nil {
-		b := a.pngCache
-		a.mu.Unlock()
-		return b, id
+// PreviewPNG devolve o frame atual do dispositivo id em PNG (com cache por frame).
+func (a *App) PreviewPNG(id string) ([]byte, uint64) {
+	cfg := a.store.Get()
+	d := a.deviceByID(id)
+	if d == nil {
+		img := render.Message(320, 480, i18n.T(render.CanvasLang(cfg.ResolvedLanguage()), "app.starting"), "", cfg.Theme)
+		var buf bytes.Buffer
+		_ = (&png.Encoder{CompressionLevel: png.BestSpeed}).Encode(&buf, img)
+		return buf.Bytes(), 0
 	}
-	a.mu.Unlock()
+	d.mu.Lock()
+	img, frameID := d.frame, d.frameID
+	if d.pngID == frameID && d.pngCache != nil {
+		b := d.pngCache
+		d.mu.Unlock()
+		return b, frameID
+	}
+	d.mu.Unlock()
 	if img == nil {
-		cfg := a.store.Get()
 		img = render.Message(320, 480, i18n.T(render.CanvasLang(cfg.ResolvedLanguage()), "app.starting"), "", cfg.Theme)
 	}
 	var buf bytes.Buffer
 	enc := png.Encoder{CompressionLevel: png.BestSpeed}
 	_ = enc.Encode(&buf, img)
-	a.mu.Lock()
-	a.pngCache, a.pngID = buf.Bytes(), id
-	a.mu.Unlock()
-	return buf.Bytes(), id
+	d.mu.Lock()
+	d.pngCache, d.pngID = buf.Bytes(), frameID
+	d.mu.Unlock()
+	return buf.Bytes(), frameID
 }
 
 func (a *App) TestSteam(ctx context.Context, key, id string) (string, error) {

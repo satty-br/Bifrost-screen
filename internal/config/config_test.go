@@ -9,8 +9,8 @@ import (
 
 func TestDefault(t *testing.T) {
 	d := Default()
-	if d.Display.Port != "AUTO" || d.Display.Orientation != OrientPortrait {
-		t.Errorf("display padrão inesperado: %+v", d.Display)
+	if len(d.Devices) != 1 || d.Devices[0].Port != "AUTO" || d.Devices[0].Orientation != OrientPortrait {
+		t.Errorf("dispositivo padrão inesperado: %+v", d.Devices)
 	}
 	if len(d.Screens.Order) != len(AllScreens) {
 		t.Errorf("ordem padrão deveria ter %d telas, tem %d", len(AllScreens), len(d.Screens.Order))
@@ -27,17 +27,23 @@ func TestNormalizeDefaults(t *testing.T) {
 	var c Config
 	c.Normalize()
 	d := Default()
-	if c.Display.Port != d.Display.Port {
-		t.Errorf("porta vazia deveria virar AUTO, veio %q", c.Display.Port)
+	if len(c.Devices) != 1 {
+		t.Fatalf("config sem dispositivos deveria ganhar 1 padrão, veio %d", len(c.Devices))
 	}
-	if c.Display.Revision != d.Display.Revision {
+	if c.Devices[0].Port != d.Devices[0].Port {
+		t.Errorf("porta vazia deveria virar AUTO, veio %q", c.Devices[0].Port)
+	}
+	if c.Devices[0].ID == "" {
+		t.Errorf("dispositivo deveria ganhar um ID")
+	}
+	if c.Devices[0].Revision != d.Devices[0].Revision {
 		t.Errorf("revisão inválida deveria cair no padrão")
 	}
-	if c.Display.Orientation != d.Display.Orientation {
+	if c.Devices[0].Orientation != d.Devices[0].Orientation {
 		t.Errorf("orientação inválida deveria cair no padrão")
 	}
-	if c.Mode.Type != ModeAuto {
-		t.Errorf("modo inválido deveria virar automático, veio %q", c.Mode.Type)
+	if c.Devices[0].Mode.Type != ModeAuto {
+		t.Errorf("modo inválido deveria virar automático, veio %q", c.Devices[0].Mode.Type)
 	}
 	if c.Steam.Source != "local" {
 		t.Errorf("fonte da steam inválida deveria virar local")
@@ -53,26 +59,60 @@ func TestNormalizeDefaults(t *testing.T) {
 	}
 }
 
+func TestNormalizeDevices(t *testing.T) {
+	c := Config{Devices: []DeviceConfig{
+		{ID: "a", Port: " com3 ", Revision: "simulado", Orientation: OrientLandscape, Brightness: 500, Mode: ModeConfig{Type: "rotacao", RotateSeconds: -5, Fixed: "invalido"}},
+		{ID: "a", Port: "AUTO"}, // ID duplicado, deve ganhar um novo
+		{ID: "", Port: "AUTO"},  // ID vazio, deve ganhar um novo
+	}}
+	c.Normalize()
+	if len(c.Devices) != 3 {
+		t.Fatalf("deveria manter os 3 dispositivos, veio %d", len(c.Devices))
+	}
+	if c.Devices[0].Port != "COM3" {
+		t.Errorf("porta deveria virar COM3 maiúsculo e sem espaços, veio %q", c.Devices[0].Port)
+	}
+	if c.Devices[0].Revision != "SIMULADO" {
+		t.Errorf("revisão deveria virar SIMULADO, veio %q", c.Devices[0].Revision)
+	}
+	if c.Devices[0].Brightness != 100 {
+		t.Errorf("brilho deveria ser limitado a 100, veio %d", c.Devices[0].Brightness)
+	}
+	if c.Devices[0].Mode.RotateSeconds != 3 {
+		t.Errorf("rotação deveria ser limitada a 3s no mínimo, veio %d", c.Devices[0].Mode.RotateSeconds)
+	}
+	if c.Devices[0].Mode.Fixed != ScreenClock {
+		t.Errorf("tela fixa inválida deveria cair no relógio, veio %q", c.Devices[0].Mode.Fixed)
+	}
+	ids := map[string]bool{}
+	for _, d := range c.Devices {
+		if ids[d.ID] {
+			t.Fatalf("IDs duplicados após normalizar: %v", c.Devices)
+		}
+		ids[d.ID] = true
+	}
+}
+
+func TestNormalizeCapsMaxDevices(t *testing.T) {
+	var c Config
+	for i := 0; i < maxDevices+5; i++ {
+		c.Devices = append(c.Devices, DeviceConfig{})
+	}
+	c.Normalize()
+	if len(c.Devices) != maxDevices {
+		t.Errorf("deveria limitar a %d dispositivos, veio %d", maxDevices, len(c.Devices))
+	}
+}
+
 func TestNormalizeClampsAndFixes(t *testing.T) {
 	c := Config{
-		Display: DisplayConfig{Port: " com3 ", Revision: "simulado", Orientation: OrientLandscape, Brightness: 500},
 		Screens: ScreensConfig{Order: []Screen{"relogio", "xyz", "relogio", "jogo"}, System: SystemScreen{Disk: "  d  "}},
-		Mode:    ModeConfig{Type: "rotacao", RotateSeconds: -5, Fixed: "invalido"},
 		Theme:   ThemeConfig{AccentMusic: "vermelho", AccentGame: "#ABCDEF", Background: "outro", BgColor: "#123"},
 		Steam:   SteamConfig{Source: "outra-coisa", APIKey: "  chave  ", SteamID64: " 123 ", StatusSeconds: 1, LibrarySeconds: 1},
 		General: GeneralConfig{RefreshMillis: 10, WebPort: 80, Language: "fr"},
 	}
 	c.Normalize()
 
-	if c.Display.Port != "COM3" {
-		t.Errorf("porta deveria virar COM3 maiúsculo e sem espaços, veio %q", c.Display.Port)
-	}
-	if c.Display.Revision != "SIMULADO" {
-		t.Errorf("revisão deveria virar SIMULADO, veio %q", c.Display.Revision)
-	}
-	if c.Display.Brightness != 100 {
-		t.Errorf("brilho deveria ser limitado a 100, veio %d", c.Display.Brightness)
-	}
 	wantOrder := []Screen{ScreenClock, ScreenGame, ScreenMusic, ScreenSystem}
 	if len(c.Screens.Order) != len(wantOrder) {
 		t.Fatalf("ordem deveria ter %d telas (sem duplicatas/desconhecidas + completada), veio %v", len(wantOrder), c.Screens.Order)
@@ -82,12 +122,6 @@ func TestNormalizeClampsAndFixes(t *testing.T) {
 	}
 	if c.Screens.System.Disk != "D:" {
 		t.Errorf("disco deveria virar D: (maiúsculo, com dois pontos), veio %q", c.Screens.System.Disk)
-	}
-	if c.Mode.RotateSeconds != 3 {
-		t.Errorf("rotação deveria ser limitada a 3s no mínimo, veio %d", c.Mode.RotateSeconds)
-	}
-	if c.Mode.Fixed != ScreenClock {
-		t.Errorf("tela fixa inválida deveria cair no relógio, veio %q", c.Mode.Fixed)
 	}
 	if c.Theme.AccentMusic != Default().Theme.AccentMusic {
 		t.Errorf("cor inválida deveria cair no padrão")
@@ -165,7 +199,7 @@ func TestStoreOpenCreatesDefault(t *testing.T) {
 		t.Errorf("Path() = %q", s.Path())
 	}
 	got := s.Get()
-	if got.Display.Port != "AUTO" {
+	if len(got.Devices) != 1 || got.Devices[0].Port != "AUTO" {
 		t.Errorf("config recém-criada deveria ser o padrão")
 	}
 }
@@ -173,7 +207,7 @@ func TestStoreOpenCreatesDefault(t *testing.T) {
 func TestStoreOpenExisting(t *testing.T) {
 	dir := t.TempDir()
 	c := Default()
-	c.Display.Port = "COM7"
+	c.Devices[0].Port = "COM7"
 	data, _ := json.MarshalIndent(c, "", "  ")
 	if err := os.WriteFile(filepath.Join(dir, "config.json"), data, 0o644); err != nil {
 		t.Fatal(err)
@@ -182,8 +216,32 @@ func TestStoreOpenExisting(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := s.Get().Display.Port; got != "COM7" {
+	if got := s.Get().Devices[0].Port; got != "COM7" {
 		t.Errorf("deveria ter carregado a porta salva, veio %q", got)
+	}
+}
+
+func TestStoreOpenMigratesLegacySingleDevice(t *testing.T) {
+	dir := t.TempDir()
+	// formato antigo: "tela"/"modo" no nível raiz, sem "dispositivos".
+	legacy := `{"tela":{"porta":"COM9","revisao":"A","orientacao":"paisagem","brilho":42},"modo":{"tipo":"fixo","tela_fixa":"sistema"}}`
+	if err := os.WriteFile(filepath.Join(dir, "config.json"), []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := s.Get()
+	if len(got.Devices) != 1 {
+		t.Fatalf("deveria migrar para 1 dispositivo, veio %d", len(got.Devices))
+	}
+	dev := got.Devices[0]
+	if dev.Port != "COM9" || dev.Orientation != OrientLandscape || dev.Brightness != 42 {
+		t.Errorf("dispositivo migrado incorreto: %+v", dev)
+	}
+	if dev.Mode.Type != ModeFixed || dev.Mode.Fixed != ScreenSystem {
+		t.Errorf("modo migrado incorreto: %+v", dev.Mode)
 	}
 }
 
@@ -196,7 +254,7 @@ func TestStoreOpenCorruptedFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := s.Get().Display.Port; got != "AUTO" {
+	if got := s.Get().Devices[0].Port; got != "AUTO" {
 		t.Errorf("config corrompida deveria virar o padrão, veio %q", got)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "config.json.invalido")); err != nil {
@@ -215,28 +273,29 @@ func TestStoreSetAndOnChange(t *testing.T) {
 	s.OnChange(func(c Config) { calls++; got = c })
 
 	c := s.Get()
-	c.Display.Brightness = 55
+	c.Devices[0].Brightness = 55
 	saved, err := s.Set(c)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if saved.Display.Brightness != 55 {
-		t.Errorf("Set() deveria devolver o valor salvo, veio %d", saved.Display.Brightness)
+	if saved.Devices[0].Brightness != 55 {
+		t.Errorf("Set() deveria devolver o valor salvo, veio %d", saved.Devices[0].Brightness)
 	}
 	if calls != 1 {
 		t.Errorf("OnChange deveria ter sido chamado 1 vez, veio %d", calls)
 	}
-	if got.Display.Brightness != 55 {
+	if got.Devices[0].Brightness != 55 {
 		t.Errorf("callback deveria receber a config nova")
 	}
-	if reread := s.Get().Display.Brightness; reread != 55 {
+	if reread := s.Get().Devices[0].Brightness; reread != 55 {
 		t.Errorf("Get() deveria refletir o valor salvo, veio %d", reread)
 	}
 
 	// mexer na config devolvida pelo Get() não deve afetar o Store (clone).
 	before := s.Get()
 	before.Screens.Order[0] = "mutated"
-	if after := s.Get(); after.Screens.Order[0] == Screen("mutated") {
+	before.Devices[0].Port = "MUTATED"
+	if after := s.Get(); after.Screens.Order[0] == Screen("mutated") || after.Devices[0].Port == "MUTATED" {
 		t.Error("Get() deveria devolver uma cópia independente (clone)")
 	}
 }
