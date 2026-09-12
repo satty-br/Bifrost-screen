@@ -9,7 +9,7 @@ import (
 // Nomes das fontes de temperatura (aparecem no painel e no diagnóstico).
 const (
 	SourceACPI        = "ACPI (Windows)"
-	SourcePawnIO      = "PawnIO"
+	SourcePawnIOAgent = "PawnIO (agente do Bifrost)"
 	SourceHWiNFO      = "HWiNFO"
 	SourceLHMWeb      = "LibreHardwareMonitor (web)"
 	SourceLHMWMI      = "LibreHardwareMonitor (WMI)"
@@ -27,6 +27,16 @@ const (
 )
 
 func validTemp(v float64) bool { return v >= tempMin && v <= tempMax }
+
+// PawnIOStatus resume, para o painel, em que pé está a leitura por driver
+// (o agente e o driver só existem no Windows; ver TempDriverStatus).
+type PawnIOStatus struct {
+	Installed bool    `json:"driver_instalado"`
+	Version   string  `json:"driver_versao,omitempty"`
+	Agent     bool    `json:"agente_ativo"`
+	CPU       float64 `json:"cpu_temperatura"`
+	Error     string  `json:"erro,omitempty"`
+}
 
 // parseTempNumber entende "45", "45.5", "45,5" e "45,5 °C".
 func parseTempNumber(s string) (float64, bool) {
@@ -289,5 +299,5 @@ const (
 	hintAfterburner = "abra o MSI Afterburner (ele publica os sensores em memória compartilhada)"
 	hintAIDA64      = "no AIDA64, ligue Preferences > External Applications > Shared Memory"
 	hintACPI        = "depende da placa-mãe expor zona térmica ACPI; a maioria dos desktops não expõe"
-	hintPawnIO      = "instale um programa que já use o driver PawnIO (LibreHardwareMonitor 0.9.5+, HWiNFO, Fan Control); o Bifrost não instala esse driver sozinho"
+	hintPawnIOAgent = "ative a leitura de temperatura no painel: o Bifrost instala o driver PawnIO (assinado, open-source) e deixa um agente publicando a leitura"
 )

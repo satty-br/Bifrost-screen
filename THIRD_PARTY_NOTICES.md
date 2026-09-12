@@ -9,6 +9,31 @@ Por ser um trabalho derivado, o Bifrost inteiro é distribuído sob a GPL-3.0-or
 (ver `LICENSE`). O teste `internal/lcd/reva_test.go` confere, byte a byte, que a versão
 em Go envia os mesmos comandos que a biblioteca original.
 
+## Leitura da temperatura da CPU (Windows)
+
+No Windows a temperatura do processador só existe em registradores que apenas o
+modo kernel alcança (MSR `0x19C`/`0x1B1` na Intel, registrador SMN `0x59800` nos
+Ryzen). Para ler isso sem depender de nenhum outro programa, o Bifrost embute:
+
+- **PawnIO** — driver de kernel assinado, Copyright (C) namazso,
+  https://github.com/namazso/PawnIO — licença GPL-2.0-or-later com exceção
+  explícita para programas que falam com ele apenas pela interface de device IO
+  control, que é exatamente o caso do Bifrost. O instalador oficial
+  (`internal/pawnio/blobs/PawnIO_setup.exe`, de
+  https://github.com/namazso/PawnIO.Setup) é distribuído sem modificação e só é
+  executado quando o usuário ativa o recurso no painel.
+- **PawnIO.Modules** — módulos `IntelMSR.bin` e `AMDFamily17.bin`, de
+  https://github.com/namazso/PawnIO.Modules — licença LGPL-2.1-or-later, cópia em
+  `internal/pawnio/blobs/COPYING-PawnIO-Modules.txt`. São os binários assinados
+  publicados pelo projeto, sem nenhuma modificação; cada módulo só permite ler uma
+  lista fechada de registradores. O código-fonte correspondente está no
+  repositório acima.
+
+Se o usuário já tiver HWiNFO, LibreHardwareMonitor, MSI Afterburner ou AIDA64
+instalados, o Bifrost também aproveita os valores que esses programas publicam
+(registro, servidor web local, WMI ou memória compartilhada) — sem embutir nada
+deles.
+
 ## Fontes
 
 **Roboto** e **Roboto Mono** (Google), licença Apache 2.0 — `internal/render/fonts/LICENSE-Roboto.txt`.

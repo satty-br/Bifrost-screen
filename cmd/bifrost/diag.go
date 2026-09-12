@@ -107,10 +107,17 @@ func runDiagnostics(store *config.Store, dir string) {
 	} else {
 		p("GPU: indisponível")
 	}
+	p("")
+	drv := sysinfo.TempDriverStatus()
+	p("Driver PawnIO: %s", simNao(drv.Installed, "instalado "+drv.Version, "não instalado"))
+	p("Agente do Bifrost: %s", simNao(drv.Agent, "publicando leituras", "parado"))
+	if drv.Error != "" {
+		p("Último erro do agente: %s", drv.Error)
+	}
 	if diags := s.TempDiagnostics(); len(diags) > 0 {
 		p("")
-		p("Fontes possíveis (o Windows não expõe a temperatura da CPU sozinho;")
-		p("ela vem de um programa de monitoramento com driver próprio):")
+		p("Fontes possíveis (o Windows não expõe a temperatura da CPU sozinho:")
+		p("ela sai de registradores do processador que só o modo kernel lê):")
 		for _, d := range diags {
 			status := "não encontrada"
 			if d.Available {
@@ -168,4 +175,12 @@ func runDiagnostics(store *config.Store, dir string) {
 	_ = os.WriteFile(path, append([]byte{0xEF, 0xBB, 0xBF}, b.String()...), 0o644)
 	fmt.Print(b.String())
 	_ = winutil.OpenURL(path)
+}
+
+// simNao escolhe o texto conforme a condição (só para deixar o relatório legível).
+func simNao(cond bool, sim, nao string) string {
+	if cond {
+		return sim
+	}
+	return nao
 }

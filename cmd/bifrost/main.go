@@ -26,7 +26,19 @@ func main() {
 	panelOnly := flag.Bool("painel", false, "abre só a janela do painel (usado internamente)")
 	background := flag.Bool("segundo-plano", false, "inicia sem abrir o painel (usado na inicialização do Windows)")
 	diagnostics := flag.Bool("diagnostico", false, "gera um relatório (portas, música, sistema) e sai")
+	sensorAgent := flag.Bool("sensores", false, "modo agente: publica a temperatura da CPU (usado pela tarefa agendada)")
+	sensorSetup := flag.Bool("instalar-sensores", false, "instala o driver de temperatura e liga o agente (pede administrador)")
+	sensorRemove := flag.Bool("remover-sensores", false, "desliga o agente de temperatura e remove o driver (pede administrador)")
 	flag.Parse()
+
+	if *sensorAgent {
+		runSensorAgent()
+		return
+	}
+	if *sensorSetup || *sensorRemove {
+		runSensorSetup(*sensorRemove)
+		return
+	}
 
 	dir := config.Dir()
 	store, err := config.Open(dir)

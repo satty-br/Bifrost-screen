@@ -20,6 +20,7 @@ import (
 	"github.com/satty-br/Bifrost-screen/internal/app"
 	"github.com/satty-br/Bifrost-screen/internal/config"
 	"github.com/satty-br/Bifrost-screen/internal/lcd"
+	"github.com/satty-br/Bifrost-screen/internal/sysinfo"
 	"github.com/satty-br/Bifrost-screen/internal/winutil"
 )
 
@@ -194,6 +195,17 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+	case "instalar_sensores", "remover_sensores":
+		// A leitura por driver precisa de administrador uma única vez: o
+		// processo elevado instala o driver e deixa o agente ligado.
+		arg := "--instalar-sensores"
+		if req.Action == "remover_sensores" {
+			arg = "--remover-sensores"
+		}
+		if err := winutil.RunSelfElevated(arg); err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 	case "abrir_pasta_config":
 		_ = winutil.OpenURL(dirOf(s.Store.Path()))
 	case "abrir_log":
@@ -218,7 +230,9 @@ var links = map[string]string{
 	"steam_id":          "https://steamid.io/",
 	"steam_privacidade": "https://steamcommunity.com/my/edit/settings",
 	"repositorio":       "https://github.com/satty-br/Bifrost-screen",
-	// Programas de monitoramento que publicam a temperatura da CPU para o Bifrost ler.
+	// Driver open-source usado para ler a temperatura da CPU, e os programas de
+	// monitoramento que o Bifrost também aproveita se já estiverem instalados.
+	"pawnio": "https://github.com/namazso/PawnIO",
 	"lhm":    "https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases",
 	"hwinfo": "https://www.hwinfo.com/download/",
 }
@@ -284,6 +298,7 @@ func (s *Server) info(w http.ResponseWriter, r *http.Request) {
 		"arquivo_log":         s.LogPath,
 		"inicia_com_windows":  winutil.AutostartEnabled(),
 		"sistema_operacional": runtime.GOOS,
+		"sensores":            sysinfo.TempDriverStatus(),
 	})
 }
 

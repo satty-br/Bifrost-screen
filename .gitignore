@@ -1,6 +1,7 @@
 # binários e saída de build
 /dist/
 *.exe
+!internal/pawnio/blobs/PawnIO_setup.exe
 bifrost-linux
 
 # saída de "go test -coverprofile"

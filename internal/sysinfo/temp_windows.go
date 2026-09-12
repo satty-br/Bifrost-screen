@@ -15,6 +15,8 @@ import (
 
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
+
+	"github.com/satty-br/Bifrost-screen/internal/pawnio"
 )
 
 // OpenFileMappingW não vem no pacote windows, então é chamada direto.
@@ -27,6 +29,37 @@ var procOpenFileMappingW = kernel32.NewProc("OpenFileMappingW")
 // Afterburner, AIDA64). O Bifrost aproveita o que já estiver instalado.
 
 const tempCacheFor = 5 * time.Second
+
+// readPawnIOAgente pega a temperatura publicada pelo agente do Bifrost. O
+// driver PawnIO só responde a processos administradores, e o Bifrost roda como
+// usuário comum; então quem fala com o driver é o agente (o próprio
+// bifrost.exe em modo --sensores, iniciado por uma tarefa agendada com
+// privilégio), que escreve a leitura num arquivo em %ProgramData%\Bifrost.
+// É a única fonte que não depende de nenhum outro programa instalado.
+func readPawnIOAgente() (cpu, gpu float64) {
+	l, err := pawnio.LerLeitura()
+	if err != nil || !l.Fresca() || !validTemp(l.CPU) {
+		return -1, -1
+	}
+	return l.CPU, -1
+}
+
+// PawnIOStatus resume, para o painel, em que pé está a leitura por driver.
+// TempDriverStatus diz ao painel se o driver está instalado e se o agente está
+// publicando leituras, para ele oferecer ativar ou desativar o recurso.
+func TempDriverStatus() PawnIOStatus {
+	instalado, versao := pawnio.Instalado()
+	st := PawnIOStatus{Installed: instalado, Version: versao, CPU: -1}
+	l, err := pawnio.LerLeitura()
+	if err != nil {
+		return st
+	}
+	st.Error = l.Erro
+	if l.Fresca() {
+		st.Agent, st.CPU = true, l.CPU
+	}
+	return st
+}
 
 // externalTemps tenta as fontes externas em ordem de custo e devolve também o
 // nome da fonte que respondeu (para mostrar no painel e no diagnóstico).
@@ -44,8 +77,8 @@ func (s *Sampler) externalTemps() (cpu, gpu float64, source string) {
 		nome string
 		ler  func() (float64, float64)
 	}{
+		{SourcePawnIOAgent, readPawnIOAgente},
 		{SourceHWiNFO, readHWiNFORegistry},
-		{SourcePawnIO, readPawnIO},
 		{SourceLHMWeb, readLHMWeb},
 		{SourceAfterburner, readAfterburner},
 		{SourceAIDA64, readAIDA64},
@@ -272,7 +305,7 @@ func (s *Sampler) TempDiagnostics() []TempSourceStatus {
 		ler  func() (float64, float64)
 	}{
 		{SourceHWiNFO, hintHWiNFO, readHWiNFORegistry},
-		{SourcePawnIO, hintPawnIO, readPawnIO},
+		{SourcePawnIOAgent, hintPawnIOAgent, readPawnIOAgente},
 		{SourceLHMWeb, hintLHMWeb, readLHMWeb},
 		{SourceAfterburner, hintAfterburner, readAfterburner},
 		{SourceAIDA64, hintAIDA64, readAIDA64},

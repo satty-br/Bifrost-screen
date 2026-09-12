@@ -103,6 +103,16 @@ func KillElevated(pids []uint32) error {
 // OpenURL abre um endereço no navegador padrão.
 func OpenURL(url string) error { return shellExecute("open", url, "", 1) }
 
+// RunSelfElevated roda este mesmo executável como administrador (janela do
+// UAC). Usado para instalar o driver de temperatura, que exige privilégio.
+func RunSelfElevated(args string) error {
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	return shellExecute("runas", exe, args, 0)
+}
+
 // SetAutostart liga/desliga a inicialização junto com o Windows (só para este usuário).
 func SetAutostart(enabled bool) error {
 	k, _, err := registry.CreateKey(registry.CURRENT_USER, runKey, registry.SET_VALUE|registry.QUERY_VALUE)
