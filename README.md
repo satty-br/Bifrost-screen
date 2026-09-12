@@ -33,6 +33,9 @@ Runs on **Windows**, **Linux** and **macOS** — see [Platforms](#platforms) for
   read directly from the Steam install on your PC, no API key needed.
 - **System**: CPU, GPU, memory, disk, network, and how long the PC has been on.
 - **Clock**: time and date, in 12- or 24-hour format, with or without seconds.
+- **Mancer Mystic G1 watercooler display** (optional): sends the live CPU temperature to the small 2-digit HID
+  display built into the Mancer Mystic G1 water block, auto-detected over USB (VID `0xAA88` / PID `0x8666`) —
+  no port to pick, just a toggle. See [Mancer Mystic G1 display](#mancer-mystic-g1-display) below.
 
 ## Platforms
 
@@ -47,6 +50,7 @@ Runs on **Windows**, **Linux** and **macOS** — see [Platforms](#platforms) for
 | Steam — Web API | ✅ | ✅ | ✅ |
 | Autostart with the system | ✅ registry | ✅ XDG autostart (`~/.config/autostart`) | ✅ LaunchAgent (`~/Library/LaunchAgents`) |
 | Conflict detection (official app) | ✅ | n/a (Windows-only official app) | n/a (Windows-only official app) |
+| Mancer Mystic G1 watercooler display | ✅ SetupAPI + HidD_*/HidP_* (no CGO) | ✅ `/dev/hidraw*` (no CGO, may need a udev rule) | ❌ would require IOKit/CGO |
 
 On Linux/macOS there's no embedded window, so the panel opens in your default browser instead
 (still only reachable from `127.0.0.1`).
@@ -102,6 +106,23 @@ If you play on **another PC**, switch the source to **Steam Web API** in the Ste
 2. Click **Find my ID** to get your SteamID64 (17 digits).
 3. In Steam's privacy settings, set **Game details** to **Public**.
 4. Click **Test**.
+
+### Mancer Mystic G1 display
+
+If you have a **Mancer Mystic G1** water block, its small 2-digit HID display (normally just showing "88")
+can be fed the live CPU temperature. Turn it on with the toggle in the **Connection** tab — the device
+is auto-detected over USB by its VID/PID (`0xAA88` / `0x8666`), no port to choose. It updates twice a
+second and shows "88" again if Bifrost stops or the connection drops.
+
+This is an independent feature (not one of the rotating screens above) based on the reverse-engineered
+protocol from [dsmlucas/mancer-g1-cpu-temp-display](https://github.com/dsmlucas/mancer-g1-cpu-temp-display)
+(MIT licensed): a single HID output report byte, 0–99, equal to the temperature in Celsius.
+
+- **Windows**: implemented with the native SetupAPI/HidD_*/HidP_* Win32 APIs (no CGO), the same way
+  Device Manager enumerates HID devices under the hood.
+- **Linux**: implemented via `/dev/hidraw*` (no CGO). If you get a permission error, add a udev rule
+  granting your user access to the device, similar to the reference project's `99-mancer-watercooler.rules`.
+- **macOS**: not supported — would require IOKit's HID Manager, which needs CGO.
 
 ## Where data is stored
 

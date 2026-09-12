@@ -50,6 +50,7 @@ type Config struct {
 	Theme   ThemeConfig   `json:"tema"`
 	Steam   SteamConfig   `json:"steam"`
 	General GeneralConfig `json:"geral"`
+	Mancer  MancerConfig  `json:"mancer"`
 }
 
 type DisplayConfig struct {
@@ -132,6 +133,13 @@ type GeneralConfig struct {
 	WebPort       int    `json:"porta_painel"`
 	Language      string `json:"idioma"` // "auto" ou um código ("en", "pt", "es", "ja", "zh")
 	AutoUpdate    bool   `json:"atualizar_automaticamente"`
+}
+
+// MancerConfig liga/desliga o envio da temperatura da CPU para o mostrador
+// embutido no bloco d'água Mancer Mystic G1 (detectado sozinho pelo VID/PID
+// do HID, sem precisar escolher porta).
+type MancerConfig struct {
+	Enabled bool `json:"ativado"`
 }
 
 // Default devolve a configuração de fábrica.

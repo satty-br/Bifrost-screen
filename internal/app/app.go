@@ -17,6 +17,7 @@ import (
 	"github.com/satty-br/Bifrost-screen/internal/config"
 	"github.com/satty-br/Bifrost-screen/internal/i18n"
 	"github.com/satty-br/Bifrost-screen/internal/lcd"
+	"github.com/satty-br/Bifrost-screen/internal/mancer"
 	"github.com/satty-br/Bifrost-screen/internal/media"
 	"github.com/satty-br/Bifrost-screen/internal/render"
 	"github.com/satty-br/Bifrost-screen/internal/steam"
@@ -34,6 +35,13 @@ const (
 	StatusError      = "erro"
 	StatusSimulated  = "simulada"
 )
+
+// MancerState é o resumo do mostrador Mancer Mystic G1 (watercooler).
+type MancerState struct {
+	Enabled   bool   `json:"ativado"`
+	Connected bool   `json:"conectado"`
+	Error     string `json:"erro"`
+}
 
 // State é o resumo mostrado no painel.
 type State struct {
@@ -53,6 +61,7 @@ type State struct {
 	Active     []config.Screen    `json:"telas_ativas"`
 	Version    string             `json:"versao"`
 	Update     *update.Release    `json:"atualizacao,omitempty"`
+	Mancer     MancerState        `json:"mancer"`
 }
 
 type App struct {
@@ -62,26 +71,30 @@ type App struct {
 	steam   *steam.Client
 	sys     *sysinfo.Sampler
 	updater *update.Checker
+	mancer  *mancer.Monitor
 
-	mu          sync.Mutex
-	display     lcd.Display
-	status      string
-	statusText  string
-	conflicts   []winutil.Conflict
-	frame       *image.RGBA
-	sent        *image.RGBA
-	frameID     uint64
-	pngCache    []byte
-	pngID       uint64
-	screen      config.Screen
-	paused      bool
-	pin         config.Screen
-	pinUntil    time.Time
-	rotateIdx   int
-	rotateAt    time.Time
-	applied     config.DisplayConfig
-	reconnect   chan struct{}
-	forceRedraw bool
+	mu           sync.Mutex
+	display      lcd.Display
+	status       string
+	statusText   string
+	conflicts    []winutil.Conflict
+	frame        *image.RGBA
+	sent         *image.RGBA
+	frameID      uint64
+	pngCache     []byte
+	pngID        uint64
+	screen       config.Screen
+	paused       bool
+	pin          config.Screen
+	pinUntil     time.Time
+	rotateIdx    int
+	rotateAt     time.Time
+	applied      config.DisplayConfig
+	reconnect    chan struct{}
+	forceRedraw  bool
+	mancerOn     bool
+	mancerCancel context.CancelFunc
+	rootCtx      context.Context
 }
 
 func New(store *config.Store, cacheDir, version string) *App {
@@ -92,6 +105,7 @@ func New(store *config.Store, cacheDir, version string) *App {
 		steam:     steam.New(cacheDir),
 		sys:       &sysinfo.Sampler{},
 		updater:   update.NewChecker(version),
+		mancer:    mancer.NewMonitor(),
 		status:    StatusConnecting,
 		reconnect: make(chan struct{}, 1),
 	}
@@ -115,6 +129,10 @@ func steamSettings(c config.Config) steam.Settings {
 
 // Run inicia tudo e bloqueia até ctx terminar.
 func (a *App) Run(ctx context.Context) {
+	a.mu.Lock()
+	a.rootCtx = ctx
+	a.mu.Unlock()
+
 	cfg := a.store.Get()
 	a.media.Start(time.Second)
 	a.sys.SetDisk(cfg.Screens.System.Disk)
@@ -125,6 +143,7 @@ func (a *App) Run(ctx context.Context) {
 	if cfg.General.AutoUpdate {
 		a.updater.Start(ctx, 6*time.Hour)
 	}
+	a.syncMancer(cfg)
 
 	ticker := time.NewTicker(time.Duration(cfg.General.RefreshMillis) * time.Millisecond)
 	defer ticker.Stop()
@@ -151,6 +170,7 @@ func (a *App) onConfig(c config.Config) {
 	if err := winutil.SetAutostart(c.General.Autostart); err != nil {
 		log.Printf("não consegui ajustar a inicialização com o Windows: %v", err)
 	}
+	a.syncMancer(c)
 	a.mu.Lock()
 	prev := a.applied
 	disp := a.display
@@ -186,6 +206,27 @@ func (a *App) onConfig(c config.Config) {
 	a.mu.Lock()
 	a.applied = c.Display
 	a.mu.Unlock()
+}
+
+// syncMancer liga/desliga o envio de temperatura pro mostrador Mancer Mystic
+// G1 conforme a configuração (chamado no início do Run e a cada mudança de config).
+func (a *App) syncMancer(c config.Config) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if c.Mancer.Enabled == a.mancerOn {
+		return
+	}
+	a.mancerOn = c.Mancer.Enabled
+	if a.mancerCancel != nil {
+		a.mancerCancel()
+		a.mancerCancel = nil
+	}
+	if !c.Mancer.Enabled || a.rootCtx == nil {
+		return
+	}
+	ctx, cancel := context.WithCancel(a.rootCtx)
+	a.mancerCancel = cancel
+	a.mancer.Start(ctx, 500*time.Millisecond, func() float64 { return a.sys.Get().CPUTemp })
 }
 
 // Reconnect derruba a conexão atual e tenta de novo.
@@ -460,6 +501,7 @@ func (a *App) State() State {
 		Media: m, MediaError: a.media.LastError(), Steam: st, SteamError: a.steam.LastError(),
 		System: a.sys.Get(), FrameID: a.frameID, Active: a.activeScreens(cfg, m, st), Version: a.Version,
 		Update: a.updater.Available(),
+		Mancer: MancerState{Enabled: cfg.Mancer.Enabled, Connected: a.mancer.Connected(), Error: a.mancer.LastError()},
 	}
 }
 
