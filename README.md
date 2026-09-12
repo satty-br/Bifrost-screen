@@ -146,11 +146,21 @@ internal/steam/     Steam: local reading (Windows registry + .vdf files) and Web
 internal/sysinfo/   CPU, GPU, memory, network and disk per platform
 internal/web/       control panel (local server + UI)
 internal/winutil/   processes, autostart, single instance, per platform
+internal/update/    checks GitHub Releases for new versions and installs them
 internal/config/    config.json
 tools/genres/       generates the Windows .exe's icon, manifest and version
 ```
 
 The panel is only served on `127.0.0.1` (not visible on the network) and rejects requests coming from other sites.
+
+## Updating
+
+Bifrost checks GitHub Releases for a newer version on startup and every 6 hours
+(toggle in the **General** tab). When one is found, the panel shows a banner
+with an **Update and restart** button — it downloads the right binary for your
+OS/arch, verifies its SHA-256 against the release's `checksums.txt` when
+available, replaces the running binary, and restarts. No data is sent anywhere
+other than the public, unauthenticated GitHub API/CDN.
 
 ## Troubleshooting
 

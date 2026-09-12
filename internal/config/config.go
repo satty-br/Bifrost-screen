@@ -131,6 +131,7 @@ type GeneralConfig struct {
 	RefreshMillis int    `json:"atualizacao_ms"`
 	WebPort       int    `json:"porta_painel"`
 	Language      string `json:"idioma"` // "auto" ou um código ("en", "pt", "es", "ja", "zh")
+	AutoUpdate    bool   `json:"atualizar_automaticamente"`
 }
 
 // Default devolve a configuração de fábrica.
@@ -150,7 +151,7 @@ func Default() Config {
 			Background: "gradiente", BgColor: "#101116",
 		},
 		Steam:   SteamConfig{Enabled: true, Source: "local", StatusSeconds: 15, LibrarySeconds: 300},
-		General: GeneralConfig{Autostart: false, OpenPanel: true, RefreshMillis: 1000, WebPort: 47017, Language: "auto"},
+		General: GeneralConfig{Autostart: false, OpenPanel: true, RefreshMillis: 1000, WebPort: 47017, Language: "auto", AutoUpdate: true},
 	}
 }
 

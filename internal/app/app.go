@@ -5,9 +5,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"image"
 	"image/png"
 	"log"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -18,6 +21,7 @@ import (
 	"github.com/satty-br/Bifrost-screen/internal/render"
 	"github.com/satty-br/Bifrost-screen/internal/steam"
 	"github.com/satty-br/Bifrost-screen/internal/sysinfo"
+	"github.com/satty-br/Bifrost-screen/internal/update"
 	"github.com/satty-br/Bifrost-screen/internal/winutil"
 )
 
@@ -48,6 +52,7 @@ type State struct {
 	FrameID    uint64             `json:"frame"`
 	Active     []config.Screen    `json:"telas_ativas"`
 	Version    string             `json:"versao"`
+	Update     *update.Release    `json:"atualizacao,omitempty"`
 }
 
 type App struct {
@@ -56,6 +61,7 @@ type App struct {
 	media   *media.Reader
 	steam   *steam.Client
 	sys     *sysinfo.Sampler
+	updater *update.Checker
 
 	mu          sync.Mutex
 	display     lcd.Display
@@ -85,6 +91,7 @@ func New(store *config.Store, cacheDir, version string) *App {
 		media:     &media.Reader{},
 		steam:     steam.New(cacheDir),
 		sys:       &sysinfo.Sampler{},
+		updater:   update.NewChecker(version),
 		status:    StatusConnecting,
 		reconnect: make(chan struct{}, 1),
 	}
@@ -92,10 +99,11 @@ func New(store *config.Store, cacheDir, version string) *App {
 	return a
 }
 
-// Media/Steam/System dão acesso às fontes de dados (usados nos testes e no painel).
+// Media/Steam/System/Updater dão acesso às fontes de dados (usados nos testes e no painel).
 func (a *App) Media() *media.Reader     { return a.media }
 func (a *App) Steam() *steam.Client     { return a.steam }
 func (a *App) System() *sysinfo.Sampler { return a.sys }
+func (a *App) Updater() *update.Checker { return a.updater }
 
 func steamSettings(c config.Config) steam.Settings {
 	return steam.Settings{
@@ -114,6 +122,9 @@ func (a *App) Run(ctx context.Context) {
 	a.steam.Configure(steamSettings(cfg))
 	go a.steam.Run(ctx)
 	go a.connectionLoop(ctx)
+	if cfg.General.AutoUpdate {
+		a.updater.Start(ctx, 6*time.Hour)
+	}
 
 	ticker := time.NewTicker(time.Duration(cfg.General.RefreshMillis) * time.Millisecond)
 	defer ticker.Stop()
@@ -448,7 +459,47 @@ func (a *App) State() State {
 		Pinned: a.pin != "" && time.Now().Before(a.pinUntil), Conflicts: a.conflicts,
 		Media: m, MediaError: a.media.LastError(), Steam: st, SteamError: a.steam.LastError(),
 		System: a.sys.Get(), FrameID: a.frameID, Active: a.activeScreens(cfg, m, st), Version: a.Version,
+		Update: a.updater.Available(),
 	}
+}
+
+// InstallUpdate baixa a versão mais nova (se houver), confere o checksum
+// quando o release publica um checksums.txt, e substitui o executável atual.
+// Quem chamou deve encerrar o processo logo em seguida: Apply já deixa o
+// novo binário pronto e reaberto (ou preparado pra reabrir, no Windows).
+func (a *App) InstallUpdate(ctx context.Context) error {
+	rel := a.updater.Available()
+	if rel == nil {
+		return errors.New("nenhuma atualização disponível")
+	}
+	asset, checksums := rel.FindAsset()
+	if asset == nil {
+		return fmt.Errorf("a versão %s não tem um binário para esta plataforma (%s)", rel.Version, update.AssetName())
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	path, err := update.Download(ctx, asset.URL, filepath.Dir(exe))
+	if err != nil {
+		return fmt.Errorf("baixando a atualização: %w", err)
+	}
+	if checksums != nil {
+		text, err := update.DownloadText(ctx, checksums.URL)
+		if err != nil {
+			os.Remove(path)
+			return fmt.Errorf("baixando o checksums.txt: %w", err)
+		}
+		if err := update.VerifyChecksum(path, text, asset.Name); err != nil {
+			os.Remove(path)
+			return fmt.Errorf("verificação de integridade falhou: %w", err)
+		}
+	}
+	if err := update.Apply(path); err != nil {
+		os.Remove(path)
+		return fmt.Errorf("instalando a atualização: %w", err)
+	}
+	return nil
 }
 
 // PreviewPNG devolve o frame atual em PNG (com cache por frame).

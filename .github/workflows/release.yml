@@ -47,16 +47,38 @@ jobs:
         shell: pwsh
         run: Set-Content -Path VERSION -Value "${{ inputs.version }}" -NoNewline
 
+      - name: Renomeia o binário do Windows (convenção usada pelo autoupdate)
+        shell: pwsh
+        run: Rename-Item dist/bifrost.exe dist/bifrost-windows-amd64.exe
+
+      - name: Gera checksums.txt (SHA-256, conferido pelo autoupdate)
+        shell: pwsh
+        run: |
+          Set-Location dist
+          $files = "bifrost-windows-amd64.exe","bifrost-linux-amd64","bifrost-linux-arm64","bifrost-darwin-amd64","bifrost-darwin-arm64"
+          $files | ForEach-Object { "$((Get-FileHash $_ -Algorithm SHA256).Hash.ToLower())  $_" } | Set-Content -Path checksums.txt -Encoding ascii
+
+      - name: Cria o release v${{ inputs.version }} no GitHub (com os binários anexados)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ inputs.version }}" `
+            dist/bifrost-windows-amd64.exe dist/bifrost-linux-amd64 dist/bifrost-linux-arm64 dist/bifrost-darwin-amd64 dist/bifrost-darwin-arm64 dist/checksums.txt `
+            --title "Bifrost v${{ inputs.version }}" `
+            --notes "Release automático da versão ${{ inputs.version }}. Veja o histórico de commits para detalhes."
+
       - name: Sobe os binários como artefato do workflow
         uses: actions/upload-artifact@v4
         with:
           name: bifrost-${{ inputs.version }}
           path: |
-            dist/bifrost.exe
+            dist/bifrost-windows-amd64.exe
             dist/bifrost-linux-amd64
             dist/bifrost-linux-arm64
             dist/bifrost-darwin-amd64
             dist/bifrost-darwin-arm64
+            dist/checksums.txt
 
       - name: Abre o PR com a nova versão
         uses: peter-evans/create-pull-request@v6
@@ -69,8 +91,9 @@ jobs:
             Pipeline automática (`Gerar versão`):
 
             - ✅ Testes unitários passaram
-            - ✅ Binários ${{ inputs.version }} compilados para Windows, Linux (amd64/arm64) e macOS (amd64/arm64) — baixe no artefato `bifrost-${{ inputs.version }}` deste workflow
+            - ✅ Binários ${{ inputs.version }} compilados para Windows, Linux (amd64/arm64) e macOS (amd64/arm64)
+            - 🚀 Release publicado: https://github.com/satty-br/Bifrost-screen/releases/tag/v${{ inputs.version }} (binários + `checksums.txt`, usado pela checagem automática de atualização do app)
             - 📦 `VERSION` e `cmd/bifrost/rsrc_windows_amd64.syso` atualizados (ícone/manifesto/versão do .exe)
 
-            Revise e faça merge para liberar a versão.
+            Revise e faça merge para manter o `VERSION` do repositório em dia.
           labels: release

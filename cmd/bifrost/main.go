@@ -70,6 +70,18 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
+	quit := func() {
+		log.Printf("encerrando")
+		cancel()
+		sctx, c := context.WithTimeout(context.Background(), 2*time.Second)
+		defer c()
+		srv.Shutdown(sctx)
+		time.Sleep(300 * time.Millisecond) // deixa o loop fechar a porta serial
+	}
+	srv.OnRestart = func() {
+		quit()
+		os.Exit(0)
+	}
 	go func() {
 		if err := srv.Serve(ln); err != nil {
 			log.Printf("painel: %v", err)
@@ -85,14 +97,7 @@ func main() {
 		}()
 	}
 
-	runTray(a, store, func() {
-		log.Printf("encerrando")
-		cancel()
-		sctx, c := context.WithTimeout(context.Background(), 2*time.Second)
-		defer c()
-		srv.Shutdown(sctx)
-		time.Sleep(300 * time.Millisecond) // deixa o loop fechar a porta serial
-	})
+	runTray(a, store, quit)
 }
 
 // openPanel abre (ou traz para a frente) a janela do painel num processo separado,
