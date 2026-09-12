@@ -306,6 +306,9 @@ func (s *Sampler) TempDiagnostics() []TempSourceStatus {
 	}{
 		{SourceHWiNFO, hintHWiNFO, readHWiNFORegistry},
 		{SourcePawnIOAgent, hintPawnIOAgent, readPawnIOAgente},
+		{SourceNVML, hintNVML, soGPU(nvmlTemp)},
+		{SourceADL, hintADL, soGPU(adlTemp)},
+		{SourceNvidiaSMI, hintNvidiaSMI, soGPU(nvidiaSMITemp)},
 		{SourceLHMWeb, hintLHMWeb, readLHMWeb},
 		{SourceAfterburner, hintAfterburner, readAfterburner},
 		{SourceAIDA64, hintAIDA64, readAIDA64},

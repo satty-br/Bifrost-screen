@@ -125,3 +125,30 @@ func TestContextos(t *testing.T) {
 		t.Error("SSD não é CPU nem GPU")
 	}
 }
+
+func TestParseNvidiaSMI(t *testing.T) {
+	casos := []struct {
+		nome  string
+		saida string
+		quer  float64
+		ok    bool
+	}{
+		{"uma placa", "62\n", 62, true},
+		{"com espaços e CRLF", " 57 \r\n", 57, true},
+		{"duas placas usa a primeira", "48\n71\n", 48, true},
+		{"primeira sem sensor", "N/A\n71\n", 71, true},
+		{"saída vazia", "\n", 0, false},
+		{"valor impossível", "999\n", 0, false},
+	}
+	for _, c := range casos {
+		t.Run(c.nome, func(t *testing.T) {
+			got, ok := parseNvidiaSMI(c.saida)
+			if ok != c.ok {
+				t.Fatalf("ok = %v, queria %v", ok, c.ok)
+			}
+			if ok && got != c.quer {
+				t.Fatalf("temperatura = %v, queria %v", got, c.quer)
+			}
+		})
+	}
+}

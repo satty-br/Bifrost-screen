@@ -9,3 +9,6 @@ func (s *Sampler) TempDiagnostics() []TempSourceStatus { return nil }
 
 // TempDriverStatus: o agente PawnIO só existe no Windows.
 func TempDriverStatus() PawnIOStatus { return PawnIOStatus{CPU: -1} }
+
+// GPUAdapters: a identificação da placa pelo registro só existe no Windows.
+func GPUAdapters() []string { return nil }

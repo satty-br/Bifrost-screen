@@ -384,13 +384,14 @@ func drawSystem(w, h int, in Input, th Theme) *gg.Context {
 	type gauge struct {
 		label string
 		value float64
+		temp  float64 // °C, ou -1 quando não há leitura
 	}
 	var gauges []gauge
 	if opt.ShowCPU {
-		gauges = append(gauges, gauge{"CPU", s.CPU})
+		gauges = append(gauges, gauge{"CPU", s.CPU, s.CPUTemp})
 	}
 	if opt.ShowGPU {
-		gauges = append(gauges, gauge{"GPU", s.GPU})
+		gauges = append(gauges, gauge{"GPU", s.GPU, s.GPUTemp})
 	}
 	landscape := w > h
 	type row struct {
@@ -420,7 +421,7 @@ func drawSystem(w, h int, in Input, th Theme) *gg.Context {
 		total := size*float64(len(gauges)) + 16*float64(len(gauges)-1)
 		x := (fw - total) / 2
 		for _, g := range gauges {
-			drawGauge(dc, x+size/2, y+size/2, size/2, g.value, g.label, th.Accent)
+			drawGauge(dc, x+size/2, y+size/2, size/2, g.value, g.temp, g.label, th.Accent)
 			x += size + 16
 		}
 		y += size + 12
@@ -466,7 +467,9 @@ func drawSystem(w, h int, in Input, th Theme) *gg.Context {
 	return dc
 }
 
-func drawGauge(dc *gg.Context, cx, cy, r, value float64, label string, accent color.RGBA) {
+// drawGauge desenha o arco de uso e, quando há leitura, a temperatura logo
+// abaixo do número (tempC < 0 significa "sem sensor disponível").
+func drawGauge(dc *gg.Context, cx, cy, r, value, tempC float64, label string, accent color.RGBA) {
 	start, sweep := math.Pi*0.75, math.Pi*1.5
 	lw := math.Max(8, r*0.16)
 	dc.SetLineCapRound()
@@ -487,6 +490,10 @@ func drawGauge(dc *gg.Context, cx, cy, r, value float64, label string, accent co
 	dc.SetFontFace(fv)
 	tw, _ := dc.MeasureString(txt)
 	text(dc, txt, cx-tw/2, cy-capH(fv)/2-6, fv, colFg)
+	if tempC >= 0 {
+		ft := face(fontMonoB, math.Max(10, math.Round(r*0.2)))
+		textCenter(dc, fmt.Sprintf("%.0f°C", tempC), cx, cy+r*0.16, ft, colDim)
+	}
 	fl := face(fontMedium, math.Max(11, math.Round(r*0.2)))
 	textCenter(dc, label, cx, cy+r*0.5, fl, colDim)
 }

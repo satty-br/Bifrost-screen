@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"log"
 	"os/exec"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -203,14 +202,12 @@ func (s *Sampler) Start(interval time.Duration) {
 			if st.CPUTemp >= 0 {
 				st.CPUTempSource = SourceACPI
 			}
-			st.GPUTemp = s.gpuTemperature()
-			if st.GPUTemp >= 0 {
-				st.GPUTempSource = SourceNvidiaSMI
-			}
+			st.GPUTemp, st.GPUTempSource = s.gpuTemperature()
 			if st.CPUTemp < 0 || st.GPUTemp < 0 {
 				// A maioria das placas-mãe não expõe a temperatura da CPU por API
-				// pública do Windows, e nvidia-smi só existe com GPU NVIDIA. O que
-				// faltar vem de um programa de monitoramento já instalado.
+				// pública do Windows, e as bibliotecas de vídeo só respondem pela
+				// GPU do próprio fabricante. O que faltar vem do agente do PawnIO
+				// ou de um programa de monitoramento já instalado.
 				exCPU, exGPU, src := s.externalTemps()
 				if st.CPUTemp < 0 && exCPU >= 0 {
 					st.CPUTemp, st.CPUTempSource = exCPU, src
@@ -249,33 +246,31 @@ func clamp100(v float64) float64 {
 	return v
 }
 
-// gpuTemperature lê a temperatura da GPU via nvidia-smi (só funciona com placas
-// NVIDIA). O resultado é cacheado por alguns segundos, já que chamar um
-// processo externo a cada amostra seria caro e piscaria uma janela de console.
-func (s *Sampler) gpuTemperature() float64 {
+// gpuTemperature lê a temperatura da GPU nas bibliotecas do próprio driver de
+// vídeo (ver gputemp_windows.go) e devolve também o nome da fonte que
+// respondeu. O resultado fica em cache por alguns segundos.
+func (s *Sampler) gpuTemperature() (float64, string) {
 	s.mu.Lock()
 	if time.Since(s.gpuTempAt) < 5*time.Second {
-		v := s.gpuTemp
+		v, src := s.gpuTemp, s.gpuTempSrc
 		s.mu.Unlock()
-		return v
+		return v, src
 	}
 	s.mu.Unlock()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 800*time.Millisecond)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, "nvidia-smi", "--query-gpu=temperature.gpu", "--format=csv,noheader,nounits")
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	out, err := cmd.Output()
-	v := -1.0
-	if err == nil {
-		if n, perr := strconv.ParseFloat(strings.TrimSpace(string(out)), 64); perr == nil {
-			v = n
-		}
+	v, src := -1.0, ""
+	if t, ok := nvmlTemp(); ok {
+		v, src = t, SourceNVML
+	} else if t, ok := adlTemp(); ok {
+		v, src = t, SourceADL
+	} else if t, ok := nvidiaSMITemp(); ok {
+		v, src = t, SourceNvidiaSMI
 	}
+
 	s.mu.Lock()
-	s.gpuTemp, s.gpuTempAt = v, time.Now()
+	s.gpuTemp, s.gpuTempSrc, s.gpuTempAt = v, src, time.Now()
 	s.mu.Unlock()
-	return v
+	return v, src
 }
 
 type hwSensor struct {
