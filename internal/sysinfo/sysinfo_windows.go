@@ -200,18 +200,23 @@ func (s *Sampler) Start(interval time.Duration) {
 				st.NetDown = sum(q.netDown, isVirtualNIC)
 				st.NetUp = sum(q.netUp, isVirtualNIC)
 			}
+			if st.CPUTemp >= 0 {
+				st.CPUTempSource = SourceACPI
+			}
 			st.GPUTemp = s.gpuTemperature()
+			if st.GPUTemp >= 0 {
+				st.GPUTempSource = SourceNvidiaSMI
+			}
 			if st.CPUTemp < 0 || st.GPUTemp < 0 {
-				// a maioria das placas-mãe não expõe zona térmica pela API padrão do
-				// Windows, e nvidia-smi só existe com GPU NVIDIA: se sobrar alguma
-				// temperatura por descobrir, tenta o LibreHardwareMonitor (se o
-				// usuário tiver ele instalado e aberto, lendo os sensores reais).
-				hwCPU, hwGPU := s.hwSensorTemps()
-				if st.CPUTemp < 0 {
-					st.CPUTemp = hwCPU
+				// A maioria das placas-mãe não expõe a temperatura da CPU por API
+				// pública do Windows, e nvidia-smi só existe com GPU NVIDIA. O que
+				// faltar vem de um programa de monitoramento já instalado.
+				exCPU, exGPU, src := s.externalTemps()
+				if st.CPUTemp < 0 && exCPU >= 0 {
+					st.CPUTemp, st.CPUTempSource = exCPU, src
 				}
-				if st.GPUTemp < 0 {
-					st.GPUTemp = hwGPU
+				if st.GPUTemp < 0 && exGPU >= 0 {
+					st.GPUTemp, st.GPUTempSource = exGPU, src
 				}
 			}
 			var mem memoryStatusEx

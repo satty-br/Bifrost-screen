@@ -49,6 +49,7 @@ type Config struct {
 	Theme   ThemeConfig   `json:"tema"`
 	Steam   SteamConfig   `json:"steam"`
 	General GeneralConfig `json:"geral"`
+	Mancer  MancerConfig  `json:"mancer"`
 }
 
 // DeviceConfig é uma tela USB configurada. O ID é interno e estável (não muda
@@ -142,6 +143,14 @@ type GeneralConfig struct {
 	AutoUpdate    bool   `json:"atualizar_automaticamente"`
 }
 
+// MancerConfig liga/desliga o envio da temperatura da CPU para o mostrador
+// embutido no bloco d'água Mancer Mystic G1 (detectado sozinho pelo VID/PID
+// do HID, sem precisar escolher porta). Ligado por padrão: se o dispositivo
+// não estiver conectado, a detecção simplesmente não encontra nada.
+type MancerConfig struct {
+	Enabled bool `json:"ativado"`
+}
+
 // Default devolve a configuração de fábrica.
 func Default() Config {
 	return Config{
@@ -159,6 +168,7 @@ func Default() Config {
 		},
 		Steam:   SteamConfig{Enabled: true, Source: "local", StatusSeconds: 15, LibrarySeconds: 300},
 		General: GeneralConfig{Autostart: false, OpenPanel: true, RefreshMillis: 1000, WebPort: 47017, Language: "auto", AutoUpdate: true},
+		Mancer:  MancerConfig{Enabled: true},
 	}
 }
 

@@ -18,6 +18,7 @@ import (
 	"github.com/satty-br/Bifrost-screen/internal/config"
 	"github.com/satty-br/Bifrost-screen/internal/i18n"
 	"github.com/satty-br/Bifrost-screen/internal/lcd"
+	"github.com/satty-br/Bifrost-screen/internal/mancer"
 	"github.com/satty-br/Bifrost-screen/internal/media"
 	"github.com/satty-br/Bifrost-screen/internal/render"
 	"github.com/satty-br/Bifrost-screen/internal/steam"
@@ -35,6 +36,13 @@ const (
 	StatusError      = "erro"
 	StatusSimulated  = "simulada"
 )
+
+// MancerState é o resumo do mostrador Mancer Mystic G1 (watercooler).
+type MancerState struct {
+	Enabled   bool   `json:"ativado"`
+	Connected bool   `json:"conectado"`
+	Error     string `json:"erro"`
+}
 
 // DeviceState é o resumo de UM dispositivo (uma tela USB), mostrado no painel.
 type DeviceState struct {
@@ -61,6 +69,7 @@ type State struct {
 	System     sysinfo.Stats   `json:"sistema"`
 	Version    string          `json:"versao"`
 	Update     *update.Release `json:"atualizacao,omitempty"`
+	Mancer     MancerState     `json:"mancer"`
 }
 
 // device é o estado ao vivo de um dispositivo configurado (uma tela USB).
@@ -144,11 +153,14 @@ type App struct {
 	sys     *sysinfo.Sampler
 	updater *update.Checker
 	claims  *portClaims
+	mancer  *mancer.Monitor
 
-	devMu   sync.RWMutex
-	rootCtx context.Context
-	devices map[string]*device
-	order   []string // IDs na ordem da configuração, pra State() sair estável
+	devMu        sync.RWMutex
+	rootCtx      context.Context
+	devices      map[string]*device
+	order        []string // IDs na ordem da configuração, pra State() sair estável
+	mancerOn     bool
+	mancerCancel context.CancelFunc
 }
 
 func New(store *config.Store, cacheDir, version string) *App {
@@ -160,6 +172,7 @@ func New(store *config.Store, cacheDir, version string) *App {
 		sys:     &sysinfo.Sampler{},
 		updater: update.NewChecker(version),
 		claims:  newPortClaims(),
+		mancer:  mancer.NewMonitor(),
 		devices: map[string]*device{},
 	}
 	store.OnChange(a.onConfig)
@@ -196,6 +209,7 @@ func (a *App) Run(ctx context.Context) {
 	if cfg.General.AutoUpdate {
 		a.updater.Start(ctx, 6*time.Hour)
 	}
+	a.syncMancer(cfg)
 
 	ticker := time.NewTicker(time.Duration(cfg.General.RefreshMillis) * time.Millisecond)
 	defer ticker.Stop()
@@ -275,6 +289,7 @@ func (a *App) onConfig(c config.Config) {
 	if err := winutil.SetAutostart(c.General.Autostart); err != nil {
 		log.Printf("não consegui ajustar a inicialização com o Windows: %v", err)
 	}
+	a.syncMancer(c)
 
 	a.devMu.RLock()
 	root := a.rootCtx
@@ -295,7 +310,6 @@ func (a *App) onConfig(c config.Config) {
 		status := d.status
 		d.forceRedraw = true
 		d.mu.Unlock()
-
 		// re-traduz o texto de status atual (ex: "Conectada em X") se o idioma mudou.
 		switch status {
 		case StatusConnected:
@@ -329,6 +343,27 @@ func (a *App) onConfig(c config.Config) {
 		d.applied = dc
 		d.mu.Unlock()
 	}
+}
+
+// syncMancer liga/desliga o envio de temperatura pro mostrador Mancer Mystic
+// G1 conforme a configuração (chamado no início do Run e a cada mudança de config).
+func (a *App) syncMancer(c config.Config) {
+	a.devMu.Lock()
+	defer a.devMu.Unlock()
+	if c.Mancer.Enabled == a.mancerOn {
+		return
+	}
+	a.mancerOn = c.Mancer.Enabled
+	if a.mancerCancel != nil {
+		a.mancerCancel()
+		a.mancerCancel = nil
+	}
+	if !c.Mancer.Enabled || a.rootCtx == nil {
+		return
+	}
+	ctx, cancel := context.WithCancel(a.rootCtx)
+	a.mancerCancel = cancel
+	a.mancer.Start(ctx, 500*time.Millisecond, func() float64 { return a.sys.Get().CPUTemp })
 }
 
 // Reconnect derruba a conexão de um dispositivo e tenta de novo.
@@ -711,6 +746,7 @@ func (a *App) State() State {
 	return State{
 		Devices: out, Media: m, MediaError: a.media.LastError(), Steam: st, SteamError: a.steam.LastError(),
 		System: a.sys.Get(), Version: a.Version, Update: a.updater.Available(),
+		Mancer: MancerState{Enabled: cfg.Mancer.Enabled, Connected: a.mancer.Connected(), Error: a.mancer.LastError()},
 	}
 }
 

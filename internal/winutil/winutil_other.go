@@ -13,6 +13,7 @@ import (
 
 func ListProcesses() ([]Process, error) { return nil, nil }
 func KillElevated([]uint32) error       { return errors.New("só no Windows") }
+func RunSelfElevated(args string) error { return errors.New("só no Windows") }
 
 // OpenURL abre um endereço no navegador padrão: "open" no macOS, "xdg-open" no Linux/BSD.
 func OpenURL(url string) error {

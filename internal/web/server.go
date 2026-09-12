@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/satty-br/Bifrost-screen/internal/app"
 	"github.com/satty-br/Bifrost-screen/internal/config"
 	"github.com/satty-br/Bifrost-screen/internal/lcd"
+	"github.com/satty-br/Bifrost-screen/internal/sysinfo"
 	"github.com/satty-br/Bifrost-screen/internal/winutil"
 )
 
@@ -202,6 +204,17 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+	case "instalar_sensores", "remover_sensores":
+		// A leitura por driver precisa de administrador uma única vez: o
+		// processo elevado instala o driver e deixa o agente ligado.
+		arg := "--instalar-sensores"
+		if req.Action == "remover_sensores" {
+			arg = "--remover-sensores"
+		}
+		if err := winutil.RunSelfElevated(arg); err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 	case "abrir_pasta_config":
 		_ = winutil.OpenURL(dirOf(s.Store.Path()))
 	case "abrir_log":
@@ -226,6 +239,9 @@ var links = map[string]string{
 	"steam_id":          "https://steamid.io/",
 	"steam_privacidade": "https://steamcommunity.com/my/edit/settings",
 	"repositorio":       "https://github.com/satty-br/Bifrost-screen",
+	// Programas de monitoramento que o Bifrost também aproveita se já estiverem instalados.
+	"lhm":    "https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases",
+	"hwinfo": "https://www.hwinfo.com/download/",
 }
 
 func dirOf(p string) string {
@@ -284,10 +300,12 @@ func (s *Server) logs(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) info(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{
-		"versao":             s.App.Version,
-		"arquivo_config":     s.Store.Path(),
-		"arquivo_log":        s.LogPath,
-		"inicia_com_windows": winutil.AutostartEnabled(),
+		"versao":              s.App.Version,
+		"arquivo_config":      s.Store.Path(),
+		"arquivo_log":         s.LogPath,
+		"inicia_com_windows":  winutil.AutostartEnabled(),
+		"sistema_operacional": runtime.GOOS,
+		"sensores":            sysinfo.TempDriverStatus(),
 	})
 }
 

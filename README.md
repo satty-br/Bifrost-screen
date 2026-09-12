@@ -33,6 +33,9 @@ Runs on **Windows**, **Linux** and **macOS** — see [Platforms](#platforms) for
   read directly from the Steam install on your PC, no API key needed.
 - **System**: CPU, GPU, memory, disk, network, and how long the PC has been on.
 - **Clock**: time and date, in 12- or 24-hour format, with or without seconds.
+- **Mancer Mystic G1 watercooler display** (optional): sends the live CPU temperature to the small 2-digit HID
+  display built into the Mancer Mystic G1 water block, auto-detected over USB (VID `0xAA88` / PID `0x8666`) —
+  no port to pick, just a toggle. See [Mancer Mystic G1 display](#mancer-mystic-g1-display) below.
 - **Multiple screens**: connect more than one USB screen and configure each independently —
   different orientation, brightness, and switching mode per screen (e.g. one fixed on System,
   another rotating through Music/Game). New screens are auto-detected; see
@@ -54,12 +57,20 @@ Runs on **Windows**, **Linux** and **macOS** — see [Platforms](#platforms) for
 | Screen (USB serial) | ✅ | ✅ | ✅ |
 | Panel (web UI) | ✅ embedded window | ✅ opens in the browser | ✅ opens in the browser |
 | Tray icon | ✅ | ✅ | ✅ |
-| System stats (CPU/GPU/RAM/disk/temps) | ✅ | ✅ CPU/GPU temps depend on `lm-sensors`/`nvidia-smi` being available | ✅ CPU % is an approximation (no CGO); no temperatures |
+| System stats (CPU/GPU/RAM/disk/temps) | ✅ CPU/GPU temps need a monitoring tool already installed (see below) | ✅ CPU/GPU temps depend on `lm-sensors`/`nvidia-smi` being available | ✅ CPU % is an approximation (no CGO); no temperatures |
 | Now playing | ✅ Windows Media Controls (any player) | ✅ MPRIS (Spotify, VLC, browsers, etc.) | ⚠️ Music.app and Spotify only, via AppleScript (no cover art) |
 | Steam — local detection | ✅ registry + local files | ❌ use **Steam Web API** instead (Steam tab) | ❌ use **Steam Web API** instead (Steam tab) |
 | Steam — Web API | ✅ | ✅ | ✅ |
+
+Windows doesn't expose CPU/GPU temperatures through a public API, so Bifrost tries several sources
+already running on your PC, cheapest first, and uses whichever answers: **HWiNFO**, **PawnIO** (used by
+LibreHardwareMonitor 0.9.5+, HWiNFO, Fan Control — Bifrost only *reads* from it if one of those already
+installed the driver; it never installs anything itself), **LibreHardwareMonitor**'s web server or WMI,
+**MSI Afterburner** and **AIDA64**. If none of them are available, temperature just doesn't show (run
+`bifrost --diagnostico` to see exactly which sources answered).
 | Autostart with the system | ✅ registry | ✅ XDG autostart (`~/.config/autostart`) | ✅ LaunchAgent (`~/Library/LaunchAgents`) |
 | Conflict detection (official app) | ✅ | n/a (Windows-only official app) | n/a (Windows-only official app) |
+| Mancer Mystic G1 watercooler display | ✅ SetupAPI + HidD_*/HidP_* (no CGO) | ✅ `/dev/hidraw*` (no CGO, may need a udev rule) | ❌ would require IOKit/CGO |
 
 On Linux/macOS there's no embedded window, so the panel opens in your default browser instead
 (still only reachable from `127.0.0.1`).
@@ -124,6 +135,24 @@ If you play on **another PC**, switch the source to **Steam Web API** in the Ste
 2. Click **Find my ID** to get your SteamID64 (17 digits).
 3. In Steam's privacy settings, set **Game details** to **Public**.
 4. Click **Test**.
+
+### Mancer Mystic G1 display
+
+If you have a **Mancer Mystic G1** water block, its small 2-digit HID display (normally just showing "88")
+can be fed the live CPU temperature. **It's auto-detected over USB** by its VID/PID (`0xAA88` / `0x8666`) —
+plug it in and it shows up on its own in the **Connection** tab, no setup needed. If you'd rather not use it,
+click **Remove** on its card (you can add it back later from the **Add device** section). It updates twice
+a second and shows "88" again if Bifrost stops or the connection drops.
+
+This is an independent feature (not one of the rotating screens above) based on the reverse-engineered
+protocol from [dsmlucas/mancer-g1-cpu-temp-display](https://github.com/dsmlucas/mancer-g1-cpu-temp-display)
+(MIT licensed): a single HID output report byte, 0–99, equal to the temperature in Celsius.
+
+- **Windows**: implemented with the native SetupAPI/HidD_*/HidP_* Win32 APIs (no CGO), the same way
+  Device Manager enumerates HID devices under the hood.
+- **Linux**: implemented via `/dev/hidraw*` (no CGO). If you get a permission error, add a udev rule
+  granting your user access to the device, similar to the reference project's `99-mancer-watercooler.rules`.
+- **macOS**: not supported — would require IOKit's HID Manager, which needs CGO.
 
 ## Where data is stored
 
@@ -194,6 +223,13 @@ other than the public, unauthenticated GitHub API/CDN.
 | Music doesn't show up | The player needs to show up in Windows' media mini-player (the media keys). |
 | Game doesn't show up | Click **Test** in the Steam tab. Games opened outside of Steam aren't detected. On the Web API, check the "Game details" privacy setting. |
 | The screen gets hot | Lower the brightness. These screens get hot above ~50%. |
+
+## For hardware manufacturers
+
+If you make a USB screen, watercooler display, or similar peripheral and would
+like it properly integrated into Bifrost (official protocol documentation,
+sample hardware, or just a conversation about what's needed), reach out at
+**ricardo@satty.com.br**.
 
 ## Contributing
 
