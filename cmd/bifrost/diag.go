@@ -95,6 +95,35 @@ func runDiagnostics(store *config.Store, dir string) {
 	}
 	p("")
 
+	p("--- Temperatura ---")
+	st0 := s.Get()
+	if st0.CPUTemp >= 0 {
+		p("CPU: %.1f °C (fonte: %s)", st0.CPUTemp, st0.CPUTempSource)
+	} else {
+		p("CPU: indisponível")
+	}
+	if st0.GPUTemp >= 0 {
+		p("GPU: %.1f °C (fonte: %s)", st0.GPUTemp, st0.GPUTempSource)
+	} else {
+		p("GPU: indisponível")
+	}
+	if diags := s.TempDiagnostics(); len(diags) > 0 {
+		p("")
+		p("Fontes possíveis (o Windows não expõe a temperatura da CPU sozinho;")
+		p("ela vem de um programa de monitoramento com driver próprio):")
+		for _, d := range diags {
+			status := "não encontrada"
+			if d.Available {
+				status = fmt.Sprintf("OK (CPU %.1f / GPU %.1f)", d.CPU, d.GPU)
+			}
+			p("  %-28s %s", d.Name+":", status)
+			if !d.Available && d.Hint != "" {
+				p("  %-28s ↳ %s", "", d.Hint)
+			}
+		}
+	}
+	p("")
+
 	p("--- Sistema ---")
 	st := s.Get()
 	p("CPU: %.1f%%   GPU: %.1f%%", st.CPU, st.GPU)

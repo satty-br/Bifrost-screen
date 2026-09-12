@@ -32,7 +32,7 @@ var ErrNotFound = errors.New("mostrador Mancer não encontrado")
 // do pacote sysinfo pra "sensor de temperatura indisponível nesse PC"). Nesse
 // caso não faz sentido mandar 0°C pro mostrador — melhor deixar ele voltar a
 // mostrar "88" sozinho (por falta de atualização) do que exibir um valor errado.
-var errTempUnavailable = errors.New("temperatura da CPU indisponível neste PC")
+var errTempUnavailable = errors.New("temperatura da CPU indisponível neste PC — instale o LibreHardwareMonitor ou o HWiNFO (veja `bifrost.exe --diagnostico`)")
 
 // clampTemp limita a temperatura à faixa que o mostrador consegue exibir (0-99°C).
 func clampTemp(celsius float64) byte {

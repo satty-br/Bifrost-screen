@@ -44,10 +44,17 @@ Runs on **Windows**, **Linux** and **macOS** — see [Platforms](#platforms) for
 | Screen (USB serial) | ✅ | ✅ | ✅ |
 | Panel (web UI) | ✅ embedded window | ✅ opens in the browser | ✅ opens in the browser |
 | Tray icon | ✅ | ✅ | ✅ |
-| System stats (CPU/GPU/RAM/disk/temps) | ✅ | ✅ CPU/GPU temps depend on `lm-sensors`/`nvidia-smi` being available | ✅ CPU % is an approximation (no CGO); no temperatures |
+| System stats (CPU/GPU/RAM/disk/temps) | ✅ CPU/GPU temps need a monitoring tool already installed (see below) | ✅ CPU/GPU temps depend on `lm-sensors`/`nvidia-smi` being available | ✅ CPU % is an approximation (no CGO); no temperatures |
 | Now playing | ✅ Windows Media Controls (any player) | ✅ MPRIS (Spotify, VLC, browsers, etc.) | ⚠️ Music.app and Spotify only, via AppleScript (no cover art) |
 | Steam — local detection | ✅ registry + local files | ❌ use **Steam Web API** instead (Steam tab) | ❌ use **Steam Web API** instead (Steam tab) |
 | Steam — Web API | ✅ | ✅ | ✅ |
+
+Windows doesn't expose CPU/GPU temperatures through a public API, so Bifrost tries several sources
+already running on your PC, cheapest first, and uses whichever answers: **HWiNFO**, **PawnIO** (used by
+LibreHardwareMonitor 0.9.5+, HWiNFO, Fan Control — Bifrost only *reads* from it if one of those already
+installed the driver; it never installs anything itself), **LibreHardwareMonitor**'s web server or WMI,
+**MSI Afterburner** and **AIDA64**. If none of them are available, temperature just doesn't show (run
+`bifrost --diagnostico` to see exactly which sources answered).
 | Autostart with the system | ✅ registry | ✅ XDG autostart (`~/.config/autostart`) | ✅ LaunchAgent (`~/Library/LaunchAgents`) |
 | Conflict detection (official app) | ✅ | n/a (Windows-only official app) | n/a (Windows-only official app) |
 | Mancer Mystic G1 watercooler display | ✅ SetupAPI + HidD_*/HidP_* (no CGO) | ✅ `/dev/hidraw*` (no CGO, may need a udev rule) | ❌ would require IOKit/CGO |

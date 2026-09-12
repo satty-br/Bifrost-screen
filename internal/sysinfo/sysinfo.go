@@ -8,19 +8,22 @@ import (
 
 // Stats é uma leitura do sistema. Valores negativos significam "indisponível".
 type Stats struct {
-	CPU        float64       `json:"cpu"`
-	GPU        float64       `json:"gpu"`
-	CPUTemp    float64       `json:"cpu_temperatura"` // graus Celsius
-	GPUTemp    float64       `json:"gpu_temperatura"` // graus Celsius
-	RAMUsed    uint64        `json:"ram_usada"`
-	RAMTotal   uint64        `json:"ram_total"`
-	NetDown    float64       `json:"rede_down"` // bytes/s
-	NetUp      float64       `json:"rede_up"`   // bytes/s
-	DiskUsed   uint64        `json:"disco_usado"`
-	DiskTotal  uint64        `json:"disco_total"`
-	Uptime     time.Duration `json:"-"`
-	UptimeS    float64       `json:"tempo_ligado_s"`
-	CPUHistory []float64     `json:"-"`
+	CPU     float64 `json:"cpu"`
+	GPU     float64 `json:"gpu"`
+	CPUTemp float64 `json:"cpu_temperatura"` // graus Celsius
+	GPUTemp float64 `json:"gpu_temperatura"` // graus Celsius
+	// De onde veio cada temperatura ("HWiNFO", "LibreHardwareMonitor (web)"…).
+	CPUTempSource string        `json:"cpu_temperatura_fonte,omitempty"`
+	GPUTempSource string        `json:"gpu_temperatura_fonte,omitempty"`
+	RAMUsed       uint64        `json:"ram_usada"`
+	RAMTotal      uint64        `json:"ram_total"`
+	NetDown       float64       `json:"rede_down"` // bytes/s
+	NetUp         float64       `json:"rede_up"`   // bytes/s
+	DiskUsed      uint64        `json:"disco_usado"`
+	DiskTotal     uint64        `json:"disco_total"`
+	Uptime        time.Duration `json:"-"`
+	UptimeS       float64       `json:"tempo_ligado_s"`
+	CPUHistory    []float64     `json:"-"`
 }
 
 // RAMPercent devolve o uso de memória em %.
@@ -49,7 +52,8 @@ type Sampler struct {
 	gpuTemp   float64 // cache da temperatura da GPU (nvidia-smi é caro para chamar toda hora)
 	gpuTempAt time.Time
 
-	hwCPUTemp, hwGPUTemp float64 // cache dos sensores do LibreHardwareMonitor (idem)
+	hwCPUTemp, hwGPUTemp float64 // cache dos sensores externos (HWiNFO, LHM, Afterburner…)
+	hwTempSource         string
 	hwTempAt             time.Time
 }
 

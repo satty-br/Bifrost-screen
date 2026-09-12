@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -217,6 +218,9 @@ var links = map[string]string{
 	"steam_id":          "https://steamid.io/",
 	"steam_privacidade": "https://steamcommunity.com/my/edit/settings",
 	"repositorio":       "https://github.com/satty-br/Bifrost-screen",
+	// Programas de monitoramento que publicam a temperatura da CPU para o Bifrost ler.
+	"lhm":    "https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases",
+	"hwinfo": "https://www.hwinfo.com/download/",
 }
 
 func dirOf(p string) string {
@@ -275,10 +279,11 @@ func (s *Server) logs(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) info(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{
-		"versao":             s.App.Version,
-		"arquivo_config":     s.Store.Path(),
-		"arquivo_log":        s.LogPath,
-		"inicia_com_windows": winutil.AutostartEnabled(),
+		"versao":              s.App.Version,
+		"arquivo_config":      s.Store.Path(),
+		"arquivo_log":         s.LogPath,
+		"inicia_com_windows":  winutil.AutostartEnabled(),
+		"sistema_operacional": runtime.GOOS,
 	})
 }
 
