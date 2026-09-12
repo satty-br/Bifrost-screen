@@ -52,17 +52,17 @@ func runTray(a *app.App, store *config.Store, onQuit func()) {
 				case <-mOpen.ClickedCh:
 					openPanel()
 				case <-mNext.ClickedCh:
-					a.Next(1)
+					a.Next("", 1)
 				case <-mPause.ClickedCh:
 					if mPause.Checked() {
 						mPause.Uncheck()
-						a.SetPaused(false)
+						a.SetPaused("", false)
 					} else {
 						mPause.Check()
-						a.SetPaused(true)
+						a.SetPaused("", true)
 					}
 				case <-mReconnect.ClickedCh:
-					a.Reconnect()
+					a.Reconnect("")
 				case <-mQuit.ClickedCh:
 					systray.Quit()
 					return
