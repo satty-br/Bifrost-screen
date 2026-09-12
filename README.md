@@ -42,7 +42,7 @@ Runs on **Windows**, **Linux** and **macOS** — see [Platforms](#platforms) for
 | Panel (web UI) | ✅ embedded window | ✅ opens in the browser | ✅ opens in the browser |
 | Tray icon | ✅ | ✅ | ✅ |
 | System stats (CPU/GPU/RAM/disk/temps) | ✅ | ✅ CPU/GPU temps depend on `lm-sensors`/`nvidia-smi` being available | ✅ CPU % is an approximation (no CGO); no temperatures |
-| Now playing | ✅ Windows Media Controls (any player) | ✅ MPRIS (Spotify, VLC, browsers, etc.) | ❌ needs a private Apple framework, not available without CGO |
+| Now playing | ✅ Windows Media Controls (any player) | ✅ MPRIS (Spotify, VLC, browsers, etc.) | ⚠️ Music.app and Spotify only, via AppleScript (no cover art) |
 | Steam — local detection | ✅ registry + local files | ❌ use **Steam Web API** instead (Steam tab) | ❌ use **Steam Web API** instead (Steam tab) |
 | Steam — Web API | ✅ | ✅ | ✅ |
 | Autostart with the system | ✅ registry | ✅ XDG autostart (`~/.config/autostart`) | ✅ LaunchAgent (`~/Library/LaunchAgents`) |
@@ -141,7 +141,7 @@ internal/app/       decides the current screen, keeps the connection, sends the 
 internal/i18n/      translation catalog and OS UI-language detection
 internal/lcd/       screen protocol (revision A) and the serial port (Windows/Linux/macOS)
 internal/render/    screen drawing (portrait and landscape)
-internal/media/     music playing — Windows Media Control (WinRT), MPRIS/D-Bus on Linux
+internal/media/     music playing — Windows Media Control (WinRT), MPRIS/D-Bus on Linux, AppleScript (Music.app/Spotify) on macOS
 internal/steam/     Steam: local reading (Windows registry + .vdf files) and Web API (all platforms)
 internal/sysinfo/   CPU, GPU, memory, network and disk per platform
 internal/web/       control panel (local server + UI)
