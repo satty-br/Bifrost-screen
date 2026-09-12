@@ -33,12 +33,12 @@ var catalog = map[string]map[Lang]string{
 	"system.net":           {PT: "REDE", EN: "NETWORK", ES: "RED", JA: "ネットワーク", ZH: "网络"},
 
 	// status da conexão com a tela (app.go)
-	"app.starting":      {PT: "Iniciando…", EN: "Starting…", ES: "Iniciando…", JA: "起動中…", ZH: "正在启动…"},
-	"app.connecting":    {PT: "Conectando na tela…", EN: "Connecting to the screen…", ES: "Conectando con la pantalla…", JA: "画面に接続しています…", ZH: "正在连接屏幕…"},
-	"app.connected":     {PT: "Conectada em %s", EN: "Connected on %s", ES: "Conectado en %s", JA: "%s に接続しました", ZH: "已连接到 %s"},
-	"app.simulated":     {PT: "Modo simulado: sem tela USB, só a prévia do painel", EN: "Simulated mode: no USB screen, only the panel preview", ES: "Modo simulado: sin pantalla USB, solo la vista previa del panel", JA: "シミュレーションモード:USB画面はなく、パネルのプレビューのみ", ZH: "模拟模式:没有 USB 屏幕,仅面板预览"},
-	"app.port_busy":     {PT: "A porta da tela está sendo usada por outro programa", EN: "The screen's port is being used by another program", ES: "El puerto de la pantalla está siendo usado por otro programa", JA: "画面のポートが他のプログラムに使用されています", ZH: "屏幕端口正被其他程序占用"},
-	"app.not_found":     {PT: "Tela não encontrada. Ela está plugada na USB?", EN: "Screen not found. Is it plugged into USB?", ES: "No se encontró la pantalla. ¿Está conectada por USB?", JA: "画面が見つかりません。USBに接続されていますか?", ZH: "未找到屏幕。是否已插入 USB?"},
+	"app.starting":        {PT: "Iniciando…", EN: "Starting…", ES: "Iniciando…", JA: "起動中…", ZH: "正在启动…"},
+	"app.connecting":      {PT: "Conectando na tela…", EN: "Connecting to the screen…", ES: "Conectando con la pantalla…", JA: "画面に接続しています…", ZH: "正在连接屏幕…"},
+	"app.connected":       {PT: "Conectada em %s", EN: "Connected on %s", ES: "Conectado en %s", JA: "%s に接続しました", ZH: "已连接到 %s"},
+	"app.simulated":       {PT: "Modo simulado: sem tela USB, só a prévia do painel", EN: "Simulated mode: no USB screen, only the panel preview", ES: "Modo simulado: sin pantalla USB, solo la vista previa del panel", JA: "シミュレーションモード:USB画面はなく、パネルのプレビューのみ", ZH: "模拟模式:没有 USB 屏幕,仅面板预览"},
+	"app.port_busy":       {PT: "A porta da tela está sendo usada por outro programa", EN: "The screen's port is being used by another program", ES: "El puerto de la pantalla está siendo usado por otro programa", JA: "画面のポートが他のプログラムに使用されています", ZH: "屏幕端口正被其他程序占用"},
+	"app.not_found":       {PT: "Tela não encontrada. Ela está plugada na USB?", EN: "Screen not found. Is it plugged into USB?", ES: "No se encontró la pantalla. ¿Está conectada por USB?", JA: "画面が見つかりません。USBに接続されていますか?", ZH: "未找到屏幕。是否已插入 USB?"},
 	"app.lost_connection": {PT: "Perdi a conexão com a tela, reconectando…", EN: "Lost connection to the screen, reconnecting…", ES: "Se perdió la conexión con la pantalla, reconectando…", JA: "画面への接続が切れました。再接続しています…", ZH: "与屏幕的连接已断开,正在重新连接…"},
 
 	// ícone da bandeja

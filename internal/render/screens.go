@@ -27,7 +27,26 @@ type Input struct {
 	Lang   i18n.Lang
 	// SteamReady indica se a Steam está configurada (para a mensagem da tela vazia).
 	SteamReady bool
+	// GameLive é a partida ao vivo (CS2/Dota2/LoL) detectada agora, se houver.
+	GameLive LiveMatch
+	// FPS é a taxa de quadros lida do RTSS (RivaTuner), ou 0 se não disponível.
+	FPS float64
 }
+
+// LiveMatch descreve uma partida ao vivo (CS2, Dota 2 ou League of Legends),
+// mostrada na tela do jogo no lugar do resumo padrão da Steam enquanto durar.
+type LiveMatch struct {
+	Active bool
+	Game   string // "CS2", "Dota 2", "League of Legends"
+	Title  string // mapa (CS2/Dota2) ou campeão (LoL)
+	Sub    string // fase da rodada, modo, nível, tempo de jogo...
+	Score  string // placar do time, mostrado no cabeçalho
+	Alert  string // aviso destacado, ex: "Bomba plantada" (vazio = nenhum)
+	Stats  []LiveStat
+}
+
+// LiveStat é um par rótulo/valor mostrado num cartão da tela de partida ao vivo.
+type LiveStat struct{ Label, Value string }
 
 // CanvasLang ajusta o idioma para o que a fonte embutida (Roboto) consegue desenhar:
 // ela não tem glifos de CJK, então japonês/mandarim caem para o inglês só na tela física.
@@ -226,6 +245,9 @@ func mmss(d time.Duration) string {
 // ---------------------------------------------------------------- jogo
 
 func drawGame(w, h int, in Input, th Theme) *gg.Context {
+	if in.GameLive.Active {
+		return drawLiveMatch(w, h, in, th)
+	}
 	dc := newCanvas(w, h, th)
 	fw, fh := float64(w), float64(h)
 	g, opt := in.Steam, in.Cfg.Screens.Game
@@ -263,23 +285,12 @@ func drawGame(w, h int, in Input, th Theme) *gg.Context {
 		session = i18n.SessionText(in.Lang, in.Now.Sub(g.SessionStart))
 	}
 	// CPU/GPU (uso + temperatura), pra aproveitar o espaço sobrando na tela do jogo.
-	perfValue := func(pct, tempC float64) string {
-		v := "--"
-		if pct >= 0 {
-			v = fmt.Sprintf("%.0f%%", pct)
-		}
-		if tempC >= 0 {
-			if v == "--" {
-				v = fmt.Sprintf("%.0f°C", tempC)
-			} else {
-				v += fmt.Sprintf(" · %.0f°C", tempC)
-			}
-		}
-		return v
-	}
 	perf := []stat{
-		{"CPU", perfValue(in.System.CPU, in.System.CPUTemp)},
-		{"GPU", perfValue(in.System.GPU, in.System.GPUTemp)},
+		{"CPU", formatPerf(in.System.CPU, in.System.CPUTemp)},
+		{"GPU", formatPerf(in.System.GPU, in.System.GPUTemp)},
+	}
+	if in.FPS > 0 {
+		perf = append(perf, stat{"FPS", fmt.Sprintf("%.0f", in.FPS)})
 	}
 
 	drawStats := func(list []stat, x, y, width float64) float64 {
@@ -366,6 +377,136 @@ func drawGame(w, h int, in Input, th Theme) *gg.Context {
 		drawStats(perf, 16, perfY, fw-32)
 	}
 	return dc
+}
+
+// formatPerf formata uso (%) + temperatura (°C) de CPU/GPU num só texto,
+// pulando o que não tiver leitura disponível.
+func formatPerf(pct, tempC float64) string {
+	v := "--"
+	if pct >= 0 {
+		v = fmt.Sprintf("%.0f%%", pct)
+	}
+	if tempC >= 0 {
+		if v == "--" {
+			v = fmt.Sprintf("%.0f°C", tempC)
+		} else {
+			v += fmt.Sprintf(" · %.0f°C", tempC)
+		}
+	}
+	return v
+}
+
+// drawLiveMatch desenha o resumo de uma partida ao vivo (CS2, Dota 2 ou LoL),
+// no lugar do resumo padrão da Steam enquanto a partida durar.
+func drawLiveMatch(w, h int, in Input, th Theme) *gg.Context {
+	dc := newCanvas(w, h, th)
+	fw, fh := float64(w), float64(h)
+	lm := in.GameLive
+
+	drawGameWordmark(dc, fw, fh, lm.Game)
+
+	header(dc, fw, strings.ToUpper(lm.Game), th.Accent, lm.Score)
+
+	y := 58.0
+	ft := face(fontBold, 22)
+	for _, l := range wrap(dc, lm.Title, ft, fw-32, 2) {
+		textCenter(dc, l, fw/2, y, ft, colFg)
+		y += lineH(ft)
+	}
+	if lm.Sub != "" {
+		y += 4
+		textCenter(dc, lm.Sub, fw/2, y, face(fontMedium, 13), th.Accent)
+		y += 20
+	}
+	if lm.Alert != "" {
+		y += 8
+		card(dc, 16, y, fw-32, 30, 8)
+		textCenter(dc, strings.ToUpper(lm.Alert), fw/2, y+20, face(fontBold, 12), th.Accent)
+		y += 40
+	}
+	y += 12
+
+	stats := append([]LiveStat(nil), lm.Stats...)
+	stats = append(stats,
+		LiveStat{Label: "CPU", Value: formatPerf(in.System.CPU, in.System.CPUTemp)},
+		LiveStat{Label: "GPU", Value: formatPerf(in.System.GPU, in.System.GPUTemp)},
+	)
+	if in.FPS > 0 {
+		stats = append(stats, LiveStat{Label: "FPS", Value: fmt.Sprintf("%.0f", in.FPS)})
+	}
+
+	gap := 10.0
+	cw := (fw - 32 - gap) / 2
+	rowH := 58.0
+	for i := 0; i < len(stats); i += 2 {
+		if y+rowH > fh-8 {
+			break
+		}
+		row := stats[i:minInt(i+2, len(stats))]
+		for j, s := range row {
+			cx := 16 + float64(j)*(cw+gap)
+			cardW := cw
+			if len(row) == 1 {
+				cardW = fw - 32
+			}
+			card(dc, cx, y, cardW, rowH, 10)
+			text(dc, s.Label, cx+12, y+10, face(fontMedium, 11), colDim)
+			fv := face(fontMonoB, 18)
+			for size := 18.0; measure(dc, s.Value, fv) > cardW-20 && size > 11; size-- {
+				fv = face(fontMonoB, size-1)
+			}
+			text(dc, s.Value, cx+12, y+30, fv, colFg)
+		}
+		y += rowH + gap
+	}
+
+	return dc
+}
+
+// drawGameWordmark dá um fundo mais escuro (parecido com o HUD do jogo) e
+// desenha o nome bem grande, apagado e encostado na borda direita — um
+// floreio visual atrás dos cartões de estatística (desenhados por cima).
+// É só o nome em texto: nenhum logo/arte oficial é reproduzido.
+func drawGameWordmark(dc *gg.Context, fw, fh float64, game string) {
+	label, tint := "", color.RGBA{}
+	switch game {
+	case "CS2":
+		label, tint = "CS2", color.RGBA{50, 95, 140, 255} // frio, lembra o HUD azulado do CS2
+	case "Dota 2":
+		label, tint = "DOTA 2", color.RGBA{130, 45, 40, 255} // vermelho, cara do Dota
+	case "League of Legends":
+		label, tint = "LOL", color.RGBA{40, 80, 150, 255}
+	default:
+		return
+	}
+
+	// vinheta mais forte perto do canto onde o nome fica, apagando pro resto da tela
+	glow := gg.NewRadialGradient(fw, fh*0.5, 0, fw*0.25, fh*0.5, fw*1.15)
+	glow.AddColorStop(0, withAlpha(tint, 190))
+	glow.AddColorStop(1, withAlpha(tint, 0))
+	dc.SetFillStyle(glow)
+	dc.DrawRectangle(0, 0, fw, fh)
+	dc.Fill()
+
+	// tamanho começa relativo à altura, mas encolhe até o texto inteiro caber
+	// na largura — nomes maiores como "DOTA 2" senão vazavam pra fora da tela.
+	maxW := fw * 0.92
+	size := fh * 0.6
+	f := face(fontBold, size)
+	for size > 16 && measure(dc, label, f) > maxW {
+		size -= 2
+		f = face(fontBold, size)
+	}
+	dc.SetFontFace(f)
+	dc.SetColor(withAlpha(colFg, 60))
+	dc.DrawStringAnchored(label, fw-14, fh*0.54, 1, 0.5)
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // ---------------------------------------------------------------- sistema

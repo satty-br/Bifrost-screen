@@ -201,6 +201,7 @@ select.inp{padding-right:8px}
     </div>
     <span class="chip" id="chip" role="status"><span class="dot pulse" id="dot"></span><span id="chipText" data-i18n="chip.loading">Carregando…</span></span>
     <span class="chip" id="mancerChip" role="status" hidden><span class="dot" id="mancerDot"></span><span id="mancerChipText">—</span></span>
+    <span class="chip" id="gameDataChip" role="status" hidden><span class="dot" id="gameDataDot"></span><span id="gameDataChipText">—</span></span>
     <span class="spacer"></span>
     <button class="btn" id="btnReconnect" data-i18n="btn.reconnect" data-i18n-title="btn.reconnect_title" title="Fechar e abrir a conexão com a tela de novo">Reconectar</button>
   </div>
@@ -393,6 +394,24 @@ select.inp{padding-right:8px}
           </div>
         </div>
       </section>
+
+      <section class="card">
+        <div class="hd"><h2 data-i18n="gamedata.title">Partidas ao vivo</h2><span class="spacer"></span><span class="sw"><input type="checkbox" role="switch" aria-label="Acompanhar partidas ao vivo" data-i18n-aria-label="gamedata.title" data-path="dados_de_jogo.ativado"></span></div>
+        <div class="bd" style="display:flex;flex-direction:column;gap:14px">
+          <p class="hint" data-i18n="gamedata.hint">Acompanha CS2/CS:GO e Dota 2 (via Game State Integration da Valve) e League of Legends (via a API local da Riot) enquanto uma partida estiver rolando. Sem partida ao vivo, a tela do jogo mostra as estatísticas da conta e o FPS em tempo real (via RivaTuner, se estiver instalado).</p>
+          <p class="hint" data-i18n-html="gamedata.dota2_launch">No Dota 2 também é preciso adicionar <code>-gamestateintegration</code> nas opções de inicialização do jogo (Steam &rarr; Biblioteca &rarr; botao direito no Dota 2 &rarr; Propriedades &rarr; Opções de inicialização), senão o jogo nem lê o arquivo de configuração. O CS2 não precisa disso.</p>
+          <div class="alert" id="gameDataRestart" hidden>
+            <div style="flex:1">
+              <h3 data-i18n="gamedata.restart_title">Falta reiniciar o jogo</h3>
+              <p style="margin-bottom:0" data-i18n="gamedata.restart_text">CS2 e Dota 2 só leem a configuração do acompanhamento ao vivo quando abrem. Como o jogo já estava aberto, feche e abra de novo para os dados ao vivo aparecerem na tela.</p>
+            </div>
+          </div>
+          <dl class="kv">
+            <dt data-i18n="gamedata.status">Partida ao vivo</dt><dd id="gameDataStatus">—</dd>
+            <dt data-i18n="gamedata.fps">FPS (RivaTuner)</dt><dd id="gameDataFPS">—</dd>
+          </dl>
+        </div>
+      </section>
     </div>
 
     <!-- GERAL -->
@@ -530,6 +549,15 @@ const I18N = {
 "mancer.add_section":{pt:"Adicionar dispositivo",en:"Add device",es:"Añadir dispositivo",ja:"デバイスを追加",zh:"添加设备"},
 "mancer.temp":{pt:"Temperatura enviada",en:"Temperature sent",es:"Temperatura enviada",ja:"送信中の温度",zh:"已发送的温度"},
 "mancer.chip":{pt:"Watercooler",en:"Watercooler",es:"Watercooler",ja:"水冷クーラー",zh:"水冷"},
+"gamedata.title":{pt:"Partidas ao vivo",en:"Live matches",es:"Partidas en vivo",ja:"ライブ対戦",zh:"实时对局"},
+"gamedata.hint":{pt:"Acompanha CS2/CS:GO e Dota 2 (via Game State Integration da Valve) e League of Legends (via a API local da Riot) enquanto uma partida estiver rolando. Sem partida ao vivo, a tela do jogo mostra as estatísticas da conta e o FPS em tempo real (via RivaTuner, se estiver instalado).",en:"Tracks CS2/CS:GO and Dota 2 (via Valve's Game State Integration) and League of Legends (via Riot's local API) while a match is running. With no live match, the game screen shows account stats and real-time FPS (via RivaTuner, if installed).",es:"Sigue CS2/CS:GO y Dota 2 (mediante Game State Integration de Valve) y League of Legends (mediante la API local de Riot) mientras haya una partida en curso. Sin partida en vivo, la pantalla del juego muestra las estadísticas de la cuenta y el FPS en tiempo real (mediante RivaTuner, si está instalado).",ja:"試合中は CS2/CS:GO と Dota 2(Valve の Game State Integration 経由)、League of Legends(Riot のローカル API 経由)を追跡します。ライブ試合がない場合、ゲーム画面にはアカウントの統計と(RivaTuner がインストールされていれば)リアルタイム FPS が表示されます。",zh:"在比赛进行时跟踪 CS2/CS:GO 和 Dota 2(通过 Valve 的 Game State Integration)以及英雄联盟(通过 Riot 的本地 API)。没有实时对局时,游戏画面会显示账号统计数据和实时 FPS(如果安装了 RivaTuner)。"},
+"gamedata.dota2_launch":{pt:"No Dota 2 também é preciso adicionar <code>-gamestateintegration</code> nas opções de inicialização do jogo (Steam → Biblioteca → botão direito no Dota 2 → Propriedades → Opções de inicialização), senão o jogo nem lê o arquivo de configuração. O CS2 não precisa disso.",en:"Dota 2 also requires adding <code>-gamestateintegration</code> to the game's launch options (Steam → Library → right-click Dota 2 → Properties → Launch Options), otherwise the game won't even read the config file. CS2 doesn't need this.",es:"Dota 2 también necesita agregar <code>-gamestateintegration</code> en las opciones de inicio del juego (Steam → Biblioteca → clic derecho en Dota 2 → Propiedades → Opciones de inicio), de lo contrario el juego ni siquiera lee el archivo de configuración. CS2 no lo necesita.",ja:"Dota 2 ではゲームの起動オプションに <code>-gamestateintegration</code> を追加する必要もあります(Steam → ライブラリ → Dota 2 を右クリック → プロパティ → 起動オプション)。追加しないとゲームは設定ファイルを読み込みません。CS2 ではこれは不要です。",zh:"Dota 2 还需要在游戏的启动选项中添加 <code>-gamestateintegration</code>(Steam → 库 → 右键点击 Dota 2 → 属性 → 启动选项),否则游戏根本不会读取配置文件。CS2 不需要这个。"},
+"gamedata.status":{pt:"Partida ao vivo",en:"Live match",es:"Partida en vivo",ja:"ライブ試合",zh:"实时对局"},
+"gamedata.fps":{pt:"FPS (RivaTuner)",en:"FPS (RivaTuner)",es:"FPS (RivaTuner)",ja:"FPS(RivaTuner)",zh:"FPS(RivaTuner)"},
+"gamedata.off":{pt:"Desligado",en:"Off",es:"Apagado",ja:"オフ",zh:"已关闭"},
+"gamedata.none":{pt:"Nenhuma agora",en:"None right now",es:"Ninguna ahora",ja:"現在なし",zh:"当前没有"},
+"gamedata.restart_title":{pt:"Falta reiniciar o jogo",en:"The game needs a restart",es:"Falta reiniciar el juego",ja:"ゲームの再起動が必要です",zh:"需要重启游戏"},
+"gamedata.restart_text":{pt:"CS2 e Dota 2 só leem a configuração do acompanhamento ao vivo quando abrem. Como o jogo já estava aberto, feche e abra de novo para os dados ao vivo aparecerem na tela.",en:"CS2 and Dota 2 only read the live-tracking configuration when they launch. Since the game was already open, close and reopen it for the live data to show up on the screen.",es:"CS2 y Dota 2 solo leen la configuración de seguimiento en vivo al abrirse. Como el juego ya estaba abierto, ciérralo y ábrelo de nuevo para que los datos en vivo aparezcan en la pantalla.",ja:"CS2 と Dota 2 はライブトラッキングの設定を起動時にしか読み込みません。ゲームはすでに起動していたため、一度閉じて再度開くとライブデータが画面に表示されます。",zh:"CS2 和 Dota 2 只会在启动时读取实时追踪配置。由于游戏已经在运行,请关闭后重新打开,实时数据才会显示在屏幕上。"},
 "conn.devices":{pt:"Dispositivos",en:"Devices",es:"Dispositivos",ja:"デバイス",zh:"设备"},
 "conn.no_devices_to_add":{pt:"Todos os dispositivos suportados já foram adicionados.",en:"All supported devices have already been added.",es:"Ya se agregaron todos los dispositivos compatibles.",ja:"サポートされているデバイスはすべて追加済みです。",zh:"所有支持的设备均已添加。"},
 "conn.add_device":{pt:"Adicionar tela",en:"Add screen",es:"Añadir pantalla",ja:"画面を追加",zh:"添加屏幕"},
@@ -1054,6 +1082,18 @@ function renderState() {
     if (s.mancer.ativado) {
       $("#mancerDot").className = "dot " + (s.mancer.conectado && !s.mancer.erro ? "ok" : "warn");
       $("#mancerChipText").textContent = t("mancer.chip") + ": " + (s.mancer.conectado && !s.mancer.erro ? t("mancer.connected") : t("mancer.disconnected"));
+    }
+  }
+
+  if (s.dados_de_jogo) {
+    const gd = s.dados_de_jogo;
+    $("#gameDataStatus").textContent = !gd.ativado ? t("gamedata.off") : gd.partida_ativa ? gd.jogo : t("gamedata.none");
+    $("#gameDataFPS").textContent = gd.fps > 0 ? Math.round(gd.fps) : "—";
+    $("#gameDataRestart").hidden = !gd.aguardando_reinicio;
+    $("#gameDataChip").hidden = !gd.ativado || !gd.partida_ativa;
+    if (gd.ativado && gd.partida_ativa) {
+      $("#gameDataDot").className = "dot ok";
+      $("#gameDataChipText").textContent = gd.jogo;
     }
   }
 

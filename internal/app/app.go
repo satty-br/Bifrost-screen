@@ -12,15 +12,19 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/satty-br/Bifrost-screen/internal/config"
+	"github.com/satty-br/Bifrost-screen/internal/gsi"
 	"github.com/satty-br/Bifrost-screen/internal/i18n"
 	"github.com/satty-br/Bifrost-screen/internal/lcd"
+	"github.com/satty-br/Bifrost-screen/internal/lolapi"
 	"github.com/satty-br/Bifrost-screen/internal/mancer"
 	"github.com/satty-br/Bifrost-screen/internal/media"
 	"github.com/satty-br/Bifrost-screen/internal/render"
+	"github.com/satty-br/Bifrost-screen/internal/rtss"
 	"github.com/satty-br/Bifrost-screen/internal/steam"
 	"github.com/satty-br/Bifrost-screen/internal/sysinfo"
 	"github.com/satty-br/Bifrost-screen/internal/update"
@@ -42,6 +46,15 @@ type MancerState struct {
 	Enabled   bool   `json:"ativado"`
 	Connected bool   `json:"conectado"`
 	Error     string `json:"erro"`
+}
+
+// GameDataState é o resumo do acompanhamento ao vivo de partidas (painel).
+type GameDataState struct {
+	Enabled            bool    `json:"ativado"`
+	Active             bool    `json:"partida_ativa"`
+	Game               string  `json:"jogo"`
+	FPS                float64 `json:"fps"`
+	AguardandoReinicio bool    `json:"aguardando_reinicio"`
 }
 
 // DeviceState é o resumo de UM dispositivo (uma tela USB), mostrado no painel.
@@ -70,6 +83,7 @@ type State struct {
 	Version    string          `json:"versao"`
 	Update     *update.Release `json:"atualizacao,omitempty"`
 	Mancer     MancerState     `json:"mancer"`
+	GameData   GameDataState   `json:"dados_de_jogo"`
 }
 
 // device é o estado ao vivo de um dispositivo configurado (uma tela USB).
@@ -154,16 +168,21 @@ type App struct {
 	updater *update.Checker
 	claims  *portClaims
 	mancer  *mancer.Monitor
+	gsi     *gsi.Server
+	lol     *lolapi.Poller
 
-	devMu        sync.RWMutex
-	rootCtx      context.Context
-	devices      map[string]*device
-	order        []string // IDs na ordem da configuração, pra State() sair estável
-	mancerOn     bool
-	mancerCancel context.CancelFunc
+	devMu          sync.RWMutex
+	rootCtx        context.Context
+	devices        map[string]*device
+	order          []string // IDs na ordem da configuração, pra State() sair estável
+	mancerOn       bool
+	mancerCancel   context.CancelFunc
+	gameDataOn     bool
+	gameDataCancel context.CancelFunc
 }
 
 func New(store *config.Store, cacheDir, version string) *App {
+	cfg := store.Get()
 	a := &App{
 		Version: version,
 		store:   store,
@@ -173,6 +192,8 @@ func New(store *config.Store, cacheDir, version string) *App {
 		updater: update.NewChecker(version),
 		claims:  newPortClaims(),
 		mancer:  mancer.NewMonitor(),
+		gsi:     gsi.NovoServer(cfg.GameData.Token),
+		lol:     lolapi.NovoPoller(),
 		devices: map[string]*device{},
 	}
 	store.OnChange(a.onConfig)
@@ -210,6 +231,7 @@ func (a *App) Run(ctx context.Context) {
 		a.updater.Start(ctx, 6*time.Hour)
 	}
 	a.syncMancer(cfg)
+	a.syncGameData(cfg)
 
 	ticker := time.NewTicker(time.Duration(cfg.General.RefreshMillis) * time.Millisecond)
 	defer ticker.Stop()
@@ -290,6 +312,7 @@ func (a *App) onConfig(c config.Config) {
 		log.Printf("não consegui ajustar a inicialização com o Windows: %v", err)
 	}
 	a.syncMancer(c)
+	a.syncGameData(c)
 
 	a.devMu.RLock()
 	root := a.rootCtx
@@ -364,6 +387,153 @@ func (a *App) syncMancer(c config.Config) {
 	ctx, cancel := context.WithCancel(a.rootCtx)
 	a.mancerCancel = cancel
 	a.mancer.Start(ctx, 500*time.Millisecond, func() float64 { return a.sys.Get().CPUTemp })
+}
+
+// syncGameData liga/desliga o acompanhamento ao vivo de partidas (CS2/Dota2
+// via GSI + League of Legends via a API local da Riot), conforme a
+// configuração (chamado no início do Run e a cada mudança de config).
+func (a *App) syncGameData(c config.Config) {
+	a.devMu.Lock()
+	defer a.devMu.Unlock()
+	if c.GameData.Enabled == a.gameDataOn {
+		return
+	}
+	a.gameDataOn = c.GameData.Enabled
+	if a.gameDataCancel != nil {
+		a.gameDataCancel()
+		a.gameDataCancel = nil
+		a.gsi.Stop()
+		if err := gsi.RemoveCS2Config(); err != nil {
+			log.Printf("não consegui remover o .cfg de GSI do CS2: %v", err)
+		}
+		if err := gsi.RemoveDota2Config(); err != nil {
+			log.Printf("não consegui remover o .cfg de GSI do Dota 2: %v", err)
+		}
+	}
+	if !c.GameData.Enabled || a.rootCtx == nil {
+		return
+	}
+	if err := a.gsi.Start(gsi.DefaultPort); err != nil {
+		log.Printf("não consegui ligar o servidor de GSI (CS2/Dota2): %v", err)
+	} else {
+		if wrote, err := gsi.EnsureCS2Config(a.gsi.Porta(), a.gsi.Token()); err != nil {
+			log.Printf("CS2 não está instalado, ou não consegui configurar o GSI: %v", err)
+		} else if wrote {
+			log.Printf("GSI do CS2 configurado — reinicie o jogo se ele já estava aberto")
+		}
+		if wrote, err := gsi.EnsureDota2Config(a.gsi.Porta(), a.gsi.Token()); err != nil {
+			log.Printf("Dota 2 não está instalado, ou não consegui configurar o GSI: %v", err)
+		} else if wrote {
+			log.Printf("GSI do Dota 2 configurado — reinicie o jogo se ele já estava aberto")
+		}
+	}
+	ctx, cancel := context.WithCancel(a.rootCtx)
+	a.gameDataCancel = cancel
+	a.lol.Start(ctx, time.Second)
+}
+
+// currentLiveMatch junta a partida de GSI (CS2/Dota2) com a do LoL — CS2/Dota2
+// tem prioridade se as duas por acaso estiverem ativas (não deveria acontecer
+// na prática, já que são jogos diferentes rodando ao mesmo tempo).
+func (a *App) currentLiveMatch() render.LiveMatch {
+	if m := a.gsi.Current(); m.Ativa() {
+		return liveMatchFromGSI(m)
+	}
+	if m := a.lol.Current(); m.Ativa() {
+		return liveMatchFromLoL(m)
+	}
+	return render.LiveMatch{}
+}
+
+func liveMatchFromGSI(m gsi.Match) render.LiveMatch {
+	if c := m.CS2; c != nil {
+		alert := ""
+		switch c.BombState {
+		case "planted":
+			alert = "Bomba plantada"
+		case "defused":
+			alert = "Bomba desarmada"
+		case "exploded":
+			alert = "Bomba explodiu"
+		}
+		sub := fmt.Sprintf("Round %d · %s", c.Round, c.Phase)
+		if c.Team != "" {
+			sub += " · " + c.Team
+		}
+		return render.LiveMatch{
+			Active: true, Game: "CS2",
+			Title: c.Map, Sub: sub,
+			Score: fmt.Sprintf("%d - %d", c.ScoreCT, c.ScoreT),
+			Alert: alert,
+			Stats: []render.LiveStat{
+				{Label: "K/D/A", Value: fmt.Sprintf("%d/%d/%d", c.Kills, c.Deaths, c.Assists)},
+				{Label: "Vida", Value: fmt.Sprintf("%d", c.Health)},
+				{Label: "Armadura", Value: fmt.Sprintf("%d", c.Armor)},
+				{Label: "Dinheiro", Value: fmt.Sprintf("$%d", c.Money)},
+			},
+		}
+	}
+	if d := m.Dota2; d != nil {
+		return render.LiveMatch{
+			Active: true, Game: "Dota 2",
+			Title: prettyName(d.Hero), Sub: fmt.Sprintf("Nível %d · %s", d.Level, fmtClock(d.GameTime)),
+			Score: fmt.Sprintf("%d - %d", d.RadiantScore, d.DireScore),
+			Stats: []render.LiveStat{
+				{Label: "K/D/A", Value: fmt.Sprintf("%d/%d/%d", d.Kills, d.Deaths, d.Assists)},
+				{Label: "CS", Value: fmt.Sprintf("%d/%d", d.LastHits, d.Denies)},
+				{Label: "Ouro/min", Value: fmt.Sprintf("%d", d.GPM)},
+				{Label: "XP/min", Value: fmt.Sprintf("%d", d.XPM)},
+			},
+		}
+	}
+	return render.LiveMatch{}
+}
+
+func liveMatchFromLoL(m lolapi.Match) render.LiveMatch {
+	return render.LiveMatch{
+		Active: true, Game: "League of Legends",
+		Title: m.Champion, Sub: fmt.Sprintf("Nível %d · %s", m.Level, fmtClock(int(m.GameTime))),
+		Stats: []render.LiveStat{
+			{Label: "K/D/A", Value: fmt.Sprintf("%d/%d/%d", m.Kills, m.Deaths, m.Assists)},
+			{Label: "CS", Value: fmt.Sprintf("%d", m.CreepScore)},
+			{Label: "Ouro", Value: fmt.Sprintf("%d", m.CurrentGold)},
+		},
+	}
+}
+
+// prettyName transforma um nome interno tipo "shadow_fiend" em "Shadow Fiend".
+func prettyName(internal string) string {
+	parts := strings.Split(internal, "_")
+	for i, p := range parts {
+		if p == "" {
+			continue
+		}
+		parts[i] = strings.ToUpper(p[:1]) + p[1:]
+	}
+	return strings.Join(parts, " ")
+}
+
+// fmtClock formata segundos como "m:ss" (o tempo de jogo do Dota2 pode ser
+// negativo durante a preparação antes do horn).
+func fmtClock(seconds int) string {
+	neg := seconds < 0
+	if neg {
+		seconds = -seconds
+	}
+	s := fmt.Sprintf("%d:%02d", seconds/60, seconds%60)
+	if neg {
+		return "-" + s
+	}
+	return s
+}
+
+// currentFPS lê a taxa de quadros do RTSS (RivaTuner), se estiver rodando.
+func (a *App) currentFPS() float64 {
+	l, err := rtss.Ler()
+	if err != nil {
+		return 0
+	}
+	return l.FPS
 }
 
 // Reconnect derruba a conexão de um dispositivo e tenta de novo.
@@ -541,6 +711,10 @@ func (a *App) tick() {
 	active := a.activeScreens(cfg, m, st)
 	in := render.Input{Now: now, Cfg: cfg, Media: m, Steam: st, System: sys,
 		Lang: cfg.ResolvedLanguage(), SteamReady: cfg.Steam.Enabled && a.steam.Ready()}
+	if cfg.GameData.Enabled {
+		in.GameLive = a.currentLiveMatch()
+		in.FPS = a.currentFPS()
+	}
 
 	a.devMu.RLock()
 	devices := make([]*device, 0, len(a.order))
@@ -743,10 +917,18 @@ func (a *App) State() State {
 		})
 		d.mu.Unlock()
 	}
+	lm := a.currentLiveMatch()
+	// CS2/Dota2 só leem o .cfg de GSI ao abrir: se a Steam mostra o jogo
+	// aberto mas nada chegou ainda, é sinal de que falta reiniciar o jogo.
+	aguardandoReinicio := cfg.GameData.Enabled && !lm.Active && st.Playing && (st.AppID == 730 || st.AppID == 570)
 	return State{
 		Devices: out, Media: m, MediaError: a.media.LastError(), Steam: st, SteamError: a.steam.LastError(),
 		System: a.sys.Get(), Version: a.Version, Update: a.updater.Available(),
 		Mancer: MancerState{Enabled: cfg.Mancer.Enabled, Connected: a.mancer.Connected(), Error: a.mancer.LastError()},
+		GameData: GameDataState{
+			Enabled: cfg.GameData.Enabled, Active: lm.Active, Game: lm.Game, FPS: a.currentFPS(),
+			AguardandoReinicio: aguardandoReinicio,
+		},
 	}
 }
 
