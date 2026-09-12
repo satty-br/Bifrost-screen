@@ -202,6 +202,13 @@ other than the public, unauthenticated GitHub API/CDN.
 | Game doesn't show up | Click **Test** in the Steam tab. Games opened outside of Steam aren't detected. On the Web API, check the "Game details" privacy setting. |
 | The screen gets hot | Lower the brightness. These screens get hot above ~50%. |
 
+## For hardware manufacturers
+
+If you make a USB screen, watercooler display, or similar peripheral and would
+like it properly integrated into Bifrost (official protocol documentation,
+sample hardware, or just a conversation about what's needed), reach out at
+**ricardo@satty.com.br**.
+
 ## Contributing
 
 Bug reports, feature requests and PRs are welcome — see
