@@ -33,15 +33,30 @@ jobs:
         shell: cmd
         run: build.bat ${{ inputs.version }}
 
+      - name: Compila binários Linux e macOS ${{ inputs.version }}
+        shell: pwsh
+        run: |
+          $env:CGO_ENABLED = "0"
+          $ldflags = "-s -w -X main.version=${{ inputs.version }}"
+          $env:GOOS="linux";  $env:GOARCH="amd64"; go build -trimpath -ldflags $ldflags -o dist/bifrost-linux-amd64 ./cmd/bifrost
+          $env:GOOS="linux";  $env:GOARCH="arm64"; go build -trimpath -ldflags $ldflags -o dist/bifrost-linux-arm64 ./cmd/bifrost
+          $env:GOOS="darwin"; $env:GOARCH="amd64"; go build -trimpath -ldflags $ldflags -o dist/bifrost-darwin-amd64 ./cmd/bifrost
+          $env:GOOS="darwin"; $env:GOARCH="arm64"; go build -trimpath -ldflags $ldflags -o dist/bifrost-darwin-arm64 ./cmd/bifrost
+
       - name: Atualiza o arquivo VERSION
         shell: pwsh
         run: Set-Content -Path VERSION -Value "${{ inputs.version }}" -NoNewline
 
-      - name: Sobe bifrost.exe como artefato do workflow
+      - name: Sobe os binários como artefato do workflow
         uses: actions/upload-artifact@v4
         with:
           name: bifrost-${{ inputs.version }}
-          path: dist/bifrost.exe
+          path: |
+            dist/bifrost.exe
+            dist/bifrost-linux-amd64
+            dist/bifrost-linux-arm64
+            dist/bifrost-darwin-amd64
+            dist/bifrost-darwin-arm64
 
       - name: Abre o PR com a nova versão
         uses: peter-evans/create-pull-request@v6
@@ -54,7 +69,7 @@ jobs:
             Pipeline automática (`Gerar versão`):
 
             - ✅ Testes unitários passaram
-            - ✅ `bifrost.exe` ${{ inputs.version }} compilado — baixe no artefato `bifrost-${{ inputs.version }}` deste workflow
+            - ✅ Binários ${{ inputs.version }} compilados para Windows, Linux (amd64/arm64) e macOS (amd64/arm64) — baixe no artefato `bifrost-${{ inputs.version }}` deste workflow
             - 📦 `VERSION` e `cmd/bifrost/rsrc_windows_amd64.syso` atualizados (ícone/manifesto/versão do .exe)
 
             Revise e faça merge para liberar a versão.

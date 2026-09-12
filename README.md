@@ -6,7 +6,8 @@ A lightweight panel for the **Turing / UsbMonitor 3.5"** USB screen, replacing t
 shows the **music playing**, the **game open on Steam**, **PC usage** and a **clock**,
 with a control panel so you can choose what shows up and how.
 
-A single `bifrost.exe`, written in Go. No need to install Python or anything else.
+A single binary, written in Go. No need to install Python or anything else.
+Runs on **Windows**, **Linux** and **macOS** — see [Platforms](#platforms) for what differs between them.
 
 ## Screenshots
 
@@ -32,6 +33,23 @@ A single `bifrost.exe`, written in Go. No need to install Python or anything els
   read directly from the Steam install on your PC, no API key needed.
 - **System**: CPU, GPU, memory, disk, network, and how long the PC has been on.
 - **Clock**: time and date, in 12- or 24-hour format, with or without seconds.
+
+## Platforms
+
+| Feature | Windows | Linux | macOS |
+|---|---|---|---|
+| Screen (USB serial) | ✅ | ✅ | ✅ |
+| Panel (web UI) | ✅ embedded window | ✅ opens in the browser | ✅ opens in the browser |
+| Tray icon | ✅ | ✅ | ✅ |
+| System stats (CPU/GPU/RAM/disk/temps) | ✅ | ✅ CPU/GPU temps depend on `lm-sensors`/`nvidia-smi` being available | ✅ CPU % is an approximation (no CGO); no temperatures |
+| Now playing | ✅ Windows Media Controls (any player) | ✅ MPRIS (Spotify, VLC, browsers, etc.) | ❌ needs a private Apple framework, not available without CGO |
+| Steam — local detection | ✅ registry + local files | ❌ use **Steam Web API** instead (Steam tab) | ❌ use **Steam Web API** instead (Steam tab) |
+| Steam — Web API | ✅ | ✅ | ✅ |
+| Autostart with the system | ✅ registry | ✅ XDG autostart (`~/.config/autostart`) | ✅ LaunchAgent (`~/Library/LaunchAgents`) |
+| Conflict detection (official app) | ✅ | n/a (Windows-only official app) | n/a (Windows-only official app) |
+
+On Linux/macOS there's no embedded window, so the panel opens in your default browser instead
+(still only reachable from `127.0.0.1`).
 - **Control panel**, to choose:
   - which screens show up and in what order;
   - how they switch: automatic (shows whatever is happening), rotation, or a fixed screen;
@@ -53,16 +71,18 @@ By default it auto-detects the language configured in Windows; you can also pick
 
 ## How to use
 
-1. Download `bifrost.exe` from **Releases** (or build it yourself, see below) and put it in a folder.
-2. Open `bifrost.exe`. The panel opens and the rainbow icon appears near the clock.
-3. If the panel warns that **another program is using the screen**, check the official app in
-   the list and click **Close selected and connect**. Windows will ask for administrator permission,
-   because the official app runs as administrator. After that, disable the official app's
-   autostart in Task Manager, under the *Startup apps* tab.
+1. Download the binary for your OS from **Releases** (or build it yourself, see below) and put it in a folder.
+2. Open it. The panel opens (an embedded window on Windows, your browser on Linux/macOS)
+   and the rainbow icon appears in the tray.
+3. If the panel warns that **another program is using the screen** (Windows only, official app),
+   check the official app in the list and click **Close selected and connect**. Windows will ask
+   for administrator permission, because the official app runs as administrator. After that,
+   disable the official app's autostart in Task Manager, under the *Startup apps* tab.
 4. Done. Open a game through Steam and it shows up on the screen within seconds.
 
 Closing the panel window **does not** turn off the screen. Bifrost keeps running from the tray
-icon near the clock. To quit for good: right-click the icon → **Quit**.
+icon. To quit for good: right-click the icon → **Quit** (or Ctrl+C in the terminal if the tray
+icon isn't available on your desktop environment).
 
 ### Steam
 
@@ -85,44 +105,49 @@ If you play on **another PC**, switch the source to **Steam Web API** in the Ste
 
 ## Where data is stored
 
-`%APPDATA%\Bifrost\` holds `config.json`, `bifrost.log` and the cover art cache.
+`%APPDATA%\Bifrost\` on Windows, `~/.config/Bifrost/` on Linux, `~/Library/Application Support/Bifrost/`
+on macOS. Holds `config.json`, `bifrost.log` and the cover art cache.
 
-**Portable mode**: if a `dados` folder exists next to `bifrost.exe`, everything is saved there instead.
+**Portable mode**: if a `dados` folder exists next to the binary, everything is saved there instead.
 
-**Diagnostics**: `bifrost.exe --diagnostico` generates a `diagnostico.txt` with COM ports, conflicting
-programs, the music playing, and system readings. Useful when opening an issue.
+**Diagnostics**: `bifrost --diagnostico` (`bifrost.exe` on Windows) generates a `diagnostico.txt` with
+serial ports, conflicting programs, the music playing, and system readings. Useful when opening an issue.
 
 ## Building
 
 Requires [Go 1.24+](https://go.dev/dl/).
 
+On Windows, for a quick local build (`dist\bifrost.exe`):
+
 ```bat
 build.bat 1.0.0
 ```
 
-Or, from Linux/macOS (cross-compile, no CGO):
+For Windows + Linux + macOS binaries (amd64 and arm64), from any OS with Go installed,
+no CGO or cross-toolchain needed:
 
 ```sh
 ./build.sh 1.0.0
 ```
 
-The executable is written to `dist\bifrost.exe`. To run the tests: `go test ./...`
+This writes `dist/bifrost-windows-amd64.exe`, `dist/bifrost-linux-{amd64,arm64}` and
+`dist/bifrost-darwin-{amd64,arm64}`. To run the tests: `go test ./...`
 
 ## Structure
 
 ```
 cmd/bifrost/        program entry point, tray icon, panel window, diagnostics
 internal/app/       decides the current screen, keeps the connection, sends the frames
-internal/i18n/      translation catalog and Windows UI-language detection
-internal/lcd/       screen protocol (revision A) and the Windows serial port
+internal/i18n/      translation catalog and OS UI-language detection
+internal/lcd/       screen protocol (revision A) and the serial port (Windows/Linux/macOS)
 internal/render/    screen drawing (portrait and landscape)
-internal/media/     music playing, via the Windows Media Control (WinRT)
-internal/steam/     Steam: local reading (registry + .vdf files) and Web API
-internal/sysinfo/   CPU, GPU, memory, network and disk (Windows performance counters)
+internal/media/     music playing — Windows Media Control (WinRT), MPRIS/D-Bus on Linux
+internal/steam/     Steam: local reading (Windows registry + .vdf files) and Web API (all platforms)
+internal/sysinfo/   CPU, GPU, memory, network and disk per platform
 internal/web/       control panel (local server + UI)
-internal/winutil/   processes, autostart with Windows, single instance
+internal/winutil/   processes, autostart, single instance, per platform
 internal/config/    config.json
-tools/genres/       generates the .exe's icon, manifest and version
+tools/genres/       generates the Windows .exe's icon, manifest and version
 ```
 
 The panel is only served on `127.0.0.1` (not visible on the network) and rejects requests coming from other sites.
