@@ -238,6 +238,7 @@ select.inp{padding-right:8px}
   </aside>
 
   <section>
+    <div id="updateBox"></div>
     <div id="busyBox"></div>
 
     <nav class="tabs" role="tablist">
@@ -411,6 +412,7 @@ select.inp{padding-right:8px}
         <div class="bd">
           <div class="toggle-row"><div><div class="t" data-i18n="general.autostart">Iniciar com o Windows</div><div class="d" data-i18n="general.autostart_desc">Liga o Bifrost em segundo plano quando você entra no Windows.</div></div><span class="sw"><input type="checkbox" role="switch" aria-label="Iniciar com o Windows" data-i18n-aria-label="general.autostart" data-path="geral.iniciar_com_windows"></span></div>
           <div class="toggle-row"><div><div class="t" data-i18n="general.open_panel">Abrir este painel ao iniciar</div><div class="d" data-i18n="general.open_panel_desc">Se desligado, o Bifrost fica só no ícone perto do relógio.</div></div><span class="sw"><input type="checkbox" role="switch" aria-label="Abrir painel ao iniciar" data-i18n-aria-label="general.open_panel" data-path="geral.abrir_painel_ao_iniciar"></span></div>
+          <div class="toggle-row"><div><div class="t" data-i18n="general.autoupdate">Verificar atualizações automaticamente</div><div class="d" data-i18n="general.autoupdate_desc">Avisa quando sair uma versão nova e permite atualizar com um clique.</div></div><span class="sw"><input type="checkbox" role="switch" aria-label="Verificar atualizações automaticamente" data-i18n-aria-label="general.autoupdate" data-path="geral.atualizar_automaticamente"></span></div>
           <div class="toggle-row"><div><div class="t" data-i18n="general.refresh">Atualização da tela</div><div class="d" data-i18n="general.refresh_desc">Mais rápido deixa a barra da música mais suave; mais lento usa menos USB.</div></div>
             <select class="inp" style="flex:none;width:150px" data-path="geral.atualizacao_ms" data-type="int">
               <option value="500" data-i18n="general.refresh_05">0,5 segundo</option><option value="1000" data-i18n="general.refresh_1">1 segundo</option><option value="2000" data-i18n="general.refresh_2">2 segundos</option>
@@ -451,6 +453,11 @@ const $$ = s => [...document.querySelectorAll(s)];
 
 // ---------- i18n
 const I18N = {
+"update.title":{pt:"Nova versão disponível",en:"New version available",es:"Nueva versión disponible",ja:"新しいバージョンがあります",zh:"有新版本可用"},
+"update.text":{pt:"Bifrost %s já saiu (você está na %s).",en:"Bifrost %s is out (you're on %s).",es:"Bifrost %s ya salió (estás en la %s).",ja:"Bifrost %s がリリースされました(現在のバージョン: %s)。",zh:"Bifrost %s 已发布(当前版本 %s)。"},
+"update.install":{pt:"Atualizar e reiniciar",en:"Update and restart",es:"Actualizar y reiniciar",ja:"更新して再起動",zh:"更新并重启"},
+"update.installing":{pt:"Atualizando…",en:"Updating…",es:"Actualizando…",ja:"更新中…",zh:"正在更新…"},
+"update.notes_link":{pt:"Ver notas da versão",en:"See release notes",es:"Ver notas de la versión",ja:"リリースノートを見る",zh:"查看版本说明"},
 "chip.loading":{pt:"Carregando…",en:"Loading…",es:"Cargando…",ja:"読み込み中…",zh:"正在加载…"},
 "btn.reconnect":{pt:"Reconectar",en:"Reconnect",es:"Reconectar",ja:"再接続",zh:"重新连接"},
 "btn.reconnect_title":{pt:"Fechar e abrir a conexão com a tela de novo",en:"Close and reopen the connection to the screen",es:"Cerrar y volver a abrir la conexión con la pantalla",ja:"画面への接続を閉じて再度開きます",zh:"关闭并重新打开与屏幕的连接"},
@@ -546,6 +553,8 @@ const I18N = {
 "general.autostart_desc":{pt:"Liga o Bifrost em segundo plano quando você entra no Windows.",en:"Starts Bifrost in the background when you sign in to Windows.",es:"Inicia Bifrost en segundo plano cuando inicias sesión en Windows.",ja:"Windows にサインインしたときに Bifrost をバックグラウンドで起動します。",zh:"在你登录 Windows 时在后台启动 Bifrost。"},
 "general.open_panel":{pt:"Abrir este painel ao iniciar",en:"Open this panel on startup",es:"Abrir este panel al iniciar",ja:"起動時にこのパネルを開く",zh:"启动时打开此面板"},
 "general.open_panel_desc":{pt:"Se desligado, o Bifrost fica só no ícone perto do relógio.",en:"If off, Bifrost stays only in the tray icon near the clock.",es:"Si está apagado, Bifrost queda solo en el ícono junto al reloj.",ja:"オフにすると、Bifrost は時計の近くのアイコンだけで動作します。",zh:"关闭后,Bifrost 只保留在时钟旁的托盘图标中。"},
+"general.autoupdate":{pt:"Verificar atualizações automaticamente",en:"Automatically check for updates",es:"Buscar actualizaciones automáticamente",ja:"自動的にアップデートを確認する",zh:"自动检查更新"},
+"general.autoupdate_desc":{pt:"Avisa quando sair uma versão nova e permite atualizar com um clique.",en:"Notifies you when a new version is out and lets you update with one click.",es:"Te avisa cuando sale una versión nueva y te permite actualizar con un clic.",ja:"新しいバージョンが出たときに通知し、ワンクリックで更新できます。",zh:"有新版本时通知你,并可一键更新。"},
 "general.refresh":{pt:"Atualização da tela",en:"Screen refresh rate",es:"Actualización de la pantalla",ja:"画面の更新頻度",zh:"屏幕刷新频率"},
 "general.refresh_desc":{pt:"Mais rápido deixa a barra da música mais suave; mais lento usa menos USB.",en:"Faster makes the music progress bar smoother; slower uses less USB bandwidth.",es:"Más rápido hace que la barra de progreso de la música sea más fluida; más lento usa menos USB.",ja:"速くすると音楽の進捗バーが滑らかになり、遅くするとUSBの負荷が減ります。",zh:"更快会让音乐进度条更流畅;更慢会减少 USB 占用。"},
 "general.refresh_05":{pt:"0,5 segundo",en:"0.5 second",es:"0,5 segundo",ja:"0.5秒",zh:"0.5 秒"},
@@ -923,6 +932,33 @@ function renderState() {
   const pct = v => v >= 0 ? Math.round(v) + "%" : "—";
   $("#fSys").textContent = `CPU ${pct(y.cpu)} · GPU ${pct(y.gpu)}`;
   $("#fSysSub").textContent = t("state.memory", fmtBytes(y.ram_usada), fmtBytes(y.ram_total));
+
+  // aviso de atualização disponível
+  const upBox = $("#updateBox");
+  if (s.atualizacao && !upBox.dataset.installing) {
+    upBox.innerHTML = "";
+    const alertBox = document.createElement("div"); alertBox.className = "alert"; alertBox.style.marginBottom = "16px";
+    const inner = document.createElement("div"); inner.style.flex = "1";
+    const h3 = document.createElement("h3"); h3.textContent = t("update.title");
+    const p = document.createElement("p"); p.textContent = t("update.text", s.atualizacao.versao, s.versao);
+    inner.append(h3, p);
+    const row = document.createElement("div"); row.className = "row";
+    const install = document.createElement("button"); install.className = "btn primary"; install.id = "btnInstallUpdate"; install.textContent = t("update.install");
+    row.append(install);
+    if (s.atualizacao.url) {
+      const link = document.createElement("a"); link.href = s.atualizacao.url; link.target = "_blank"; link.rel = "noopener noreferrer"; link.className = "muted"; link.style.fontSize = "12px"; link.textContent = t("update.notes_link");
+      row.append(link);
+    }
+    inner.appendChild(row);
+    alertBox.appendChild(inner);
+    upBox.appendChild(alertBox);
+    install.onclick = async () => {
+      install.disabled = true; install.textContent = t("update.installing");
+      upBox.dataset.installing = "1";
+      try { await api("/api/atualizacao/instalar", {method:"POST"}); }
+      catch (e) { toast(e.message, false); install.disabled = false; install.textContent = t("update.install"); delete upBox.dataset.installing; }
+    };
+  } else if (!s.atualizacao && !upBox.dataset.installing) upBox.innerHTML = "";
 
   // aviso de porta ocupada
   const box = $("#busyBox");

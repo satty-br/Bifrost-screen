@@ -30,7 +30,10 @@ type Server struct {
 	Store   *config.Store
 	LogPath string
 	Port    int
-	srv     *http.Server
+	// OnRestart é chamado depois de uma atualização instalada com sucesso,
+	// pra encerrar o processo (o binário novo já foi deixado pronto/reaberto).
+	OnRestart func()
+	srv       *http.Server
 }
 
 // URL do painel.
@@ -54,6 +57,9 @@ func (s *Server) Serve(ln net.Listener) error {
 	mux.HandleFunc("POST /api/steam/testar", s.testSteam)
 	mux.HandleFunc("GET /api/logs", s.logs)
 	mux.HandleFunc("GET /api/info", s.info)
+	mux.HandleFunc("GET /api/atualizacao", s.updateStatus)
+	mux.HandleFunc("POST /api/atualizacao/verificar", s.checkUpdate)
+	mux.HandleFunc("POST /api/atualizacao/instalar", s.installUpdate)
 	s.srv = &http.Server{Handler: s.guard(mux), ReadHeaderTimeout: 5 * time.Second}
 	err := s.srv.Serve(ln)
 	if errors.Is(err, http.ErrServerClosed) {
@@ -274,6 +280,34 @@ func (s *Server) info(w http.ResponseWriter, r *http.Request) {
 		"arquivo_log":        s.LogPath,
 		"inicia_com_windows": winutil.AutostartEnabled(),
 	})
+}
+
+func (s *Server) updateStatus(w http.ResponseWriter, r *http.Request) {
+	rel := s.App.Updater().Available()
+	writeJSON(w, map[string]any{"disponivel": rel != nil, "release": rel, "erro": s.App.Updater().LastError()})
+}
+
+func (s *Server) checkUpdate(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	rel := s.App.Updater().CheckNow(ctx)
+	writeJSON(w, map[string]any{"disponivel": rel != nil, "release": rel, "erro": s.App.Updater().LastError()})
+}
+
+func (s *Server) installUpdate(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
+	defer cancel()
+	if err := s.App.InstallUpdate(ctx); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, map[string]string{"status": "instalando"})
+	if s.OnRestart != nil {
+		go func() {
+			time.Sleep(500 * time.Millisecond)
+			s.OnRestart()
+		}()
+	}
 }
 
 // LogWriter manda o log para arquivo (e o limita a ~1 MB).
