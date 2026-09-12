@@ -1,0 +1,83 @@
+package render
+
+import (
+	"image"
+	"image/color"
+	"image/png"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/satty-br/Bifrost-screen/internal/config"
+	"github.com/satty-br/Bifrost-screen/internal/i18n"
+	"github.com/satty-br/Bifrost-screen/internal/media"
+	"github.com/satty-br/Bifrost-screen/internal/steam"
+	"github.com/satty-br/Bifrost-screen/internal/sysinfo"
+)
+
+func fakeImage(w, h int) image.Image {
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			img.Set(x, y, color.RGBA{uint8(255 * x / w), 60, uint8(255 * y / h), 255})
+		}
+	}
+	return img
+}
+
+func sampleInput() Input {
+	now := time.Date(2026, 9, 11, 21, 37, 42, 0, time.Local)
+	cfg := config.Default()
+	cfg.Steam.Enabled = true
+	hist := make([]float64, 60)
+	for i := range hist {
+		hist[i] = 20 + float64((i*37)%50)
+	}
+	return Input{
+		Now: now, Cfg: cfg, SteamReady: true, Lang: i18n.EN,
+		Media: media.Info{HasSession: true, Playing: true, Title: "Bohemian Rhapsody (Remastered 2011)", Artist: "Queen",
+			Album: "A Night at the Opera", App: "Spotify", Position: 123 * time.Second, Duration: 355 * time.Second,
+			UpdatedAt: now, Cover: fakeImage(300, 300)},
+		Steam: steam.Status{Playing: true, AppID: 730, Name: "Counter-Strike 2", PersonaName: "satty", TotalMinutes: 5423,
+			TwoWeeksMinutes: 340, SessionStart: now.Add(-95 * time.Minute), Cover: fakeImage(460, 215)},
+		System: sysinfo.Stats{CPU: 37, GPU: 82, CPUTemp: 58, GPUTemp: 64, RAMUsed: 11 << 30, RAMTotal: 32 << 30, NetDown: 3.4 * (1 << 20), NetUp: 220 * (1 << 10),
+			DiskUsed: 612 << 30, DiskTotal: 931 << 30, Uptime: 26*time.Hour + 14*time.Minute, CPUHistory: hist},
+	}
+}
+
+func TestRenderAll(t *testing.T) {
+	out := os.Getenv("BIFROST_PREVIEW_DIR")
+	in := sampleInput()
+	cases := map[string]Input{"": in}
+	empty := in
+	empty.Media = media.Info{}
+	empty.Steam = steam.Status{}
+	cases["_vazio"] = empty
+	noCover := in
+	noCover.Media.Cover = nil
+	noCover.Steam.Cover = nil
+	cases["_semcapa"] = noCover
+	for suffix, input := range cases {
+		for _, s := range config.AllScreens {
+			for _, dims := range [][2]int{{320, 480}, {480, 320}} {
+				img := Draw(s, dims[0], dims[1], input)
+				if img.Bounds().Dx() != dims[0] || img.Bounds().Dy() != dims[1] {
+					t.Fatalf("%s: tamanho errado %v", s, img.Bounds())
+				}
+				if out == "" {
+					continue
+				}
+				name := filepath.Join(out, string(s)+suffix+map[bool]string{true: "_paisagem", false: ""}[dims[0] > dims[1]]+".png")
+				f, _ := os.Create(name)
+				png.Encode(f, img)
+				f.Close()
+			}
+		}
+	}
+	if out != "" {
+		f, _ := os.Create(filepath.Join(out, "mensagem.png"))
+		png.Encode(f, Message(320, 480, "Porta em uso", "Feche o app oficial da tela (UsbMonitor) para o Bifrost conectar.", in.Cfg.Theme))
+		f.Close()
+	}
+}

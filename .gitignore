@@ -1,0 +1,15 @@
+# binários e saída de build
+/dist/
+*.exe
+bifrost-linux
+
+# dados locais (modo portátil)
+dados/
+
+# resquícios da versão em Python
+.venv/
+__pycache__/
+*.pyc
+config.json
+logs/
+cache/

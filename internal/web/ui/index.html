@@ -1,0 +1,1042 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bifrost</title>
+<style>
+:root{
+  --bg:#0d0e12; --panel:#15171d; --panel2:#1b1e26; --line:#262a35; --line2:#323746;
+  --fg:#e9eaef; --dim:#9aa0b0; --faint:#6b7182;
+  --accent:#7c8cff; --ok:#34d399; --warn:#f59e0b; --bad:#f87171;
+  --r:14px; --shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 8px 24px rgba(0,0,0,.25);
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){
+  :root{ --bg:#f3f4f7; --panel:#ffffff; --panel2:#f6f7fa; --line:#e3e5ec; --line2:#d3d7e0;
+    --fg:#171922; --dim:#5b6172; --faint:#8b91a1; --shadow:0 1px 2px rgba(20,24,40,.06), 0 6px 20px rgba(20,24,40,.06); color-scheme:light; }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--fg);font:14px/1.45 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+a{color:var(--accent)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 28px}
+
+/* topo */
+header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;gap:14px;padding-top:12px;padding-bottom:12px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:.2px}
+.brand small{font-weight:500;color:var(--faint);font-size:12px}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-size:13px;color:var(--dim);max-width:52ch;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
+.dot.ok{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 25%,transparent)}
+.dot.warn{background:var(--warn);box-shadow:0 0 0 3px color-mix(in srgb,var(--warn) 25%,transparent)}
+.dot.bad{background:var(--bad);box-shadow:0 0 0 3px color-mix(in srgb,var(--bad) 25%,transparent)}
+.dot.pulse{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+.spacer{flex:1}
+
+/* botões */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--line2);background:var(--panel2);cursor:pointer;font-weight:600;font-size:13px;white-space:nowrap}
+.btn:hover{border-color:var(--faint)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#0b0c10}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{background:color-mix(in srgb,var(--bad) 18%,var(--panel2));border-color:color-mix(in srgb,var(--bad) 45%,transparent);color:var(--fg)}
+.btn.icon{width:38px;padding:0}
+.btn.icon svg{width:16px;height:16px;fill:currentColor}
+.btn:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* grade */
+main.wrap{display:grid;grid-template-columns:360px 1fr;gap:20px;padding-top:20px}
+@media (max-width:900px){main.wrap{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.card>.hd{display:flex;align-items:center;gap:10px;padding:14px 16px 0}
+.card>.hd h2{margin:0;font-size:13px;letter-spacing:.6px;text-transform:uppercase;color:var(--dim);font-weight:700}
+.card>.bd{padding:14px 16px 16px}
+
+/* prévia */
+.side{display:flex;flex-direction:column;gap:16px;position:sticky;top:76px;align-self:start}
+@media (max-width:900px){.side{position:static}}
+.device{margin:4px auto 0;padding:14px;border-radius:22px;background:linear-gradient(160deg,#2a2d36,#15161b);box-shadow:0 12px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08);width:max-content}
+.device .glass{border-radius:8px;overflow:hidden;background:#000;line-height:0}
+.device img{display:block;width:288px;height:432px;image-rendering:auto}
+.device.land img{width:300px;height:200px}
+@media (max-width:420px){.device img{width:240px;height:360px}.device.land img{width:270px;height:180px}}
+.nowrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}
+.nowrow .lbl{font-size:12px;color:var(--faint)}
+.nowrow .val{font-weight:650}
+.ctrls{display:flex;gap:8px}
+.range{display:flex;align-items:center;gap:12px;margin-top:14px}
+.range label{font-size:13px;color:var(--dim);min-width:48px}
+.range output{font-variant-numeric:tabular-nums;min-width:40px;text-align:right;color:var(--dim)}
+input[type=range]{flex:1;accent-color:var(--accent)}
+.facts{display:grid;gap:10px}
+.fact{display:flex;gap:12px;align-items:flex-start}
+.fact .ic{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:var(--panel2);border:1px solid var(--line);flex:none}
+.fact .t{font-size:12px;color:var(--faint)}
+.fact .v{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:250px}
+.fact .s{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:250px}
+
+/* abas */
+.tabs{display:flex;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:16px;overflow-x:auto}
+.tab{flex:1;min-width:max-content;height:36px;padding:0 14px;border:0;border-radius:9px;background:transparent;color:var(--dim);font-weight:600;cursor:pointer}
+.tab[aria-selected=true]{background:var(--panel2);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line2)}
+.pane{display:none;flex-direction:column;gap:16px}
+.pane.on{display:flex}
+.hint{color:var(--dim);font-size:13px;margin:0}
+.muted{color:var(--faint)}
+
+/* segmentado */
+.seg{display:inline-flex;padding:3px;border-radius:11px;background:var(--panel2);border:1px solid var(--line);gap:3px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;height:32px;padding:0 14px;border-radius:8px;cursor:pointer;color:var(--dim);font-weight:600}
+.seg button[aria-pressed=true]{background:var(--accent);color:#0b0c10}
+
+/* interruptor */
+.sw{position:relative;width:40px;height:24px;flex:none}
+.sw input{appearance:none;position:absolute;inset:0;margin:0;border-radius:999px;background:var(--line2);cursor:pointer;transition:background .15s}
+.sw input::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.sw input:checked{background:var(--accent)}
+.sw input:checked::after{transform:translateX(16px)}
+
+/* lista de telas */
+.screens{display:flex;flex-direction:column;gap:10px}
+.srow{border:1px solid var(--line);border-radius:12px;background:var(--panel2);overflow:hidden}
+.srow .top{display:flex;align-items:center;gap:12px;padding:10px 12px}
+.srow .num{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--panel);border:1px solid var(--line);color:var(--dim);flex:none}
+.srow .sic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none}
+.srow .name{font-weight:650}
+.srow .sub{font-size:12px;color:var(--faint)}
+.badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--panel);border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+.badge.live{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent)}
+.badge.showing{background:var(--accent);color:#0b0c10;border-color:transparent}
+.move{display:flex;flex-direction:column;gap:2px}
+.move button{width:26px;height:18px;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--dim);font-size:10px;line-height:1;padding:0}
+.move button:disabled{opacity:.3;cursor:default}
+.srow .opts{display:flex;flex-wrap:wrap;gap:8px;padding:0 12px 12px 58px}
+.srow.off .opts{display:none}
+.srow.off .name,.srow.off .sic{opacity:.5}
+.chk{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 11px;border-radius:9px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-size:13px;user-select:none}
+.chk input{accent-color:var(--accent);margin:0}
+.chk:has(input:checked){border-color:color-mix(in srgb,var(--accent) 55%,transparent)}
+.inline-input{height:30px;width:64px;border-radius:9px;border:1px solid var(--line);background:var(--panel);padding:0 8px;text-transform:uppercase}
+
+/* formulários */
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label{font-size:13px;font-weight:600}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.row.between{justify-content:space-between}
+.inp{height:38px;border-radius:10px;border:1px solid var(--line2);background:var(--panel2);padding:0 12px;min-width:0;flex:1}
+select.inp{padding-right:8px}
+.inp:focus{border-color:var(--accent);outline:none}
+.pw{display:flex;gap:8px;flex:1;min-width:240px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:640px){.grid2{grid-template-columns:1fr}}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--line)}
+.toggle-row:last-child{border-bottom:0}
+.toggle-row .t{font-weight:600}
+.toggle-row .d{font-size:13px;color:var(--dim)}
+
+/* cores */
+.colors{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.color{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
+.color input[type=color]{width:34px;height:34px;border:0;border-radius:9px;padding:0;background:none;cursor:pointer}
+.color input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+.color input[type=color]::-webkit-color-swatch{border:1px solid rgba(255,255,255,.2);border-radius:8px}
+.color code{font-size:12px;color:var(--faint)}
+.presets{display:flex;gap:8px;flex-wrap:wrap}
+.preset{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;font-size:13px;font-weight:600}
+.preset i{display:flex;gap:2px}
+.preset i b{width:8px;height:14px;border-radius:3px;display:block}
+
+/* orientação */
+.orients{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media (max-width:640px){.orients{grid-template-columns:repeat(2,1fr)}}
+.orient{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 8px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;font-size:12px;font-weight:600;color:var(--dim)}
+.orient[aria-pressed=true]{border-color:var(--accent);color:var(--fg);box-shadow:inset 0 0 0 1px var(--accent)}
+.orient .shape{border:2px solid currentColor;border-radius:4px;position:relative}
+.orient .shape::after{content:"";position:absolute;width:6px;height:6px;border-radius:50%;background:currentColor}
+.o-p .shape{width:22px;height:32px}.o-p .shape::after{top:3px;left:3px}
+.o-pr .shape{width:22px;height:32px}.o-pr .shape::after{bottom:3px;right:3px}
+.o-l .shape{width:32px;height:22px;margin:5px 0}.o-l .shape::after{top:3px;right:3px}
+.o-lr .shape{width:32px;height:22px;margin:5px 0}.o-lr .shape::after{bottom:3px;left:3px}
+
+/* alertas */
+.alert{display:flex;gap:14px;padding:14px 16px;border-radius:var(--r);border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);background:color-mix(in srgb,var(--warn) 10%,var(--panel))}
+.alert.bad{border-color:color-mix(in srgb,var(--bad) 45%,transparent);background:color-mix(in srgb,var(--bad) 9%,var(--panel))}
+.alert h3{margin:0 0 4px;font-size:14px}
+.alert p{margin:0 0 10px;color:var(--dim);font-size:13px}
+.conflicts{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.conflicts label{display:flex;align-items:center;gap:10px;font-size:13px}
+.conflicts code{font-weight:700}
+.ports{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.port{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--dim)}
+.port b{color:var(--fg)}
+.log{height:260px;overflow:auto;margin:0;padding:12px;border-radius:10px;background:#0a0b0e;color:#c8ccd6;border:1px solid var(--line);font:12px/1.5 ui-monospace,"Cascadia Mono",Consolas,monospace;white-space:pre-wrap}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;font-size:13px}
+.kv dt{color:var(--faint)}
+.kv dd{margin:0;word-break:break-all}
+.msg{font-size:13px}
+.msg.ok{color:var(--ok)}.msg.bad{color:var(--bad)}
+
+/* aviso de salvo */
+.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:var(--panel);border:1px solid var(--line2);box-shadow:var(--shadow);padding:9px 16px;border-radius:10px;font-weight:600;font-size:13px;transition:.2s;display:flex;align-items:center;gap:8px}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.offline{position:fixed;inset:0;background:color-mix(in srgb,var(--bg) 85%,transparent);display:none;place-items:center;z-index:20;text-align:center}
+.offline.on{display:grid}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <svg width="30" height="22" viewBox="0 0 30 22" aria-hidden="true">
+        <defs><linearGradient id="rb" x1="0" x2="1"><stop offset="0" stop-color="#f87171"/><stop offset=".25" stop-color="#fbbf24"/><stop offset=".5" stop-color="#34d399"/><stop offset=".75" stop-color="#60a5fa"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs>
+        <path d="M3 20a12 12 0 0 1 24 0" fill="none" stroke="url(#rb)" stroke-width="4" stroke-linecap="round"/>
+        <path d="M9 20a6 6 0 0 1 12 0" fill="none" stroke="url(#rb)" stroke-width="2.5" stroke-linecap="round" opacity=".55"/>
+      </svg>
+      Bifrost <small id="ver"></small>
+    </div>
+    <span class="chip" id="chip" role="status"><span class="dot pulse" id="dot"></span><span id="chipText" data-i18n="chip.loading">Carregando…</span></span>
+    <span class="spacer"></span>
+    <button class="btn" id="btnReconnect" data-i18n="btn.reconnect" data-i18n-title="btn.reconnect_title" title="Fechar e abrir a conexão com a tela de novo">Reconectar</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <aside class="side">
+    <section class="card" aria-label="Prévia da tela" data-i18n-aria-label="side.preview_title">
+      <div class="hd"><h2 data-i18n="side.now_on_screen">Na tela agora</h2><span class="spacer"></span><span class="badge" id="pausedBadge" hidden data-i18n="side.paused_badge">pausada</span></div>
+      <div class="bd">
+        <div class="device" id="device"><div class="glass"><img id="preview" alt="Prévia do que está na tela USB" data-i18n-alt="side.preview_alt" src="/api/previa.png"></div></div>
+        <div class="nowrow">
+          <div><div class="lbl" data-i18n="side.screen_label">Tela</div><div class="val" id="curScreen">—</div></div>
+          <div class="ctrls">
+            <button class="btn icon" id="btnPrev" title="Tela anterior" aria-label="Tela anterior" data-i18n-title="side.prev_title" data-i18n-aria-label="side.prev_title"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h2v12H3zM14 2v12L6 8z"/></svg></button>
+            <button class="btn icon" id="btnPause" title="Pausar" aria-label="Pausar" data-i18n-title="side.pause_title" data-i18n-aria-label="side.pause_title"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/></svg></button>
+            <button class="btn icon" id="btnNext" title="Próxima tela" aria-label="Próxima tela" data-i18n-title="side.next_title" data-i18n-aria-label="side.next_title"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 2h2v12h-2zM2 2v12l8-6z"/></svg></button>
+          </div>
+        </div>
+        <div class="range">
+          <label for="brightness" data-i18n="side.brightness">Brilho</label>
+          <input type="range" id="brightness" min="0" max="100" step="1" data-path="tela.brilho" data-type="int">
+          <output id="brightnessOut">0%</output>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-label="Agora" data-i18n-aria-label="side.now_heading">
+      <div class="hd"><h2 data-i18n="side.now_heading">Agora</h2></div>
+      <div class="bd facts">
+        <div class="fact"><div class="ic" style="color:#2dd4bf">♪</div><div><div class="t" data-i18n="side.now_music">Música</div><div class="v" id="fMusic">—</div><div class="s" id="fMusicSub"></div></div></div>
+        <div class="fact"><div class="ic" style="color:#66c0f4">🎮︎</div><div><div class="t" data-i18n="side.now_game">Jogo</div><div class="v" id="fGame">—</div><div class="s" id="fGameSub"></div></div></div>
+        <div class="fact"><div class="ic" style="color:#f59e0b">▣</div><div><div class="t" data-i18n="side.now_system">Sistema</div><div class="v" id="fSys">—</div><div class="s" id="fSysSub"></div></div></div>
+      </div>
+    </section>
+  </aside>
+
+  <section>
+    <div id="busyBox"></div>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-tab="telas" data-i18n="tab.telas">Telas</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="aparencia" data-i18n="tab.aparencia">Aparência</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="conexao" data-i18n="tab.conexao">Conexão</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="steam" data-i18n="tab.steam">Steam</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="geral" data-i18n="tab.geral">Geral</button>
+    </nav>
+
+    <!-- TELAS -->
+    <div class="pane on" id="pane-telas" role="tabpanel">
+      <section class="card">
+        <div class="hd"><h2 data-i18n="screens.how_switch">Como alternar</h2></div>
+        <div class="bd" style="display:flex;flex-direction:column;gap:12px">
+          <div class="seg" id="modeSeg" role="group" aria-label="Modo de exibição" data-i18n-aria-label="mode.aria">
+            <button data-mode="automatico" data-i18n="mode.auto">Automático</button>
+            <button data-mode="rotacao" data-i18n="mode.rotate">Rotação</button>
+            <button data-mode="fixo" data-i18n="mode.fixed">Tela fixa</button>
+          </div>
+          <p class="hint" id="modeHint"></p>
+          <div class="range" id="rotateRow" hidden style="margin-top:0">
+            <label for="rotate" style="min-width:auto" data-i18n="mode.switch_every">Trocar a cada</label>
+            <input type="range" id="rotate" min="3" max="120" step="1" data-path="modo.rotacao_segundos" data-type="int">
+            <output id="rotateOut">10s</output>
+          </div>
+          <div class="row" id="fixedRow" hidden>
+            <label for="fixed" style="font-weight:600;font-size:13px" data-i18n="mode.always_show">Mostrar sempre</label>
+            <select class="inp" id="fixed" data-path="modo.tela_fixa" style="max-width:220px">
+              <option value="musica" data-i18n="screen.music.name">Música</option><option value="jogo" data-i18n="screen.game.name">Jogo</option>
+              <option value="sistema" data-i18n="screen.system.name">Sistema</option><option value="relogio" data-i18n="screen.clock.name">Relógio</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="hd"><h2 data-i18n="screens.what_to_show">O que exibir</h2><span class="spacer"></span><span class="muted" style="font-size:12px" id="orderHint">A ordem define a prioridade</span></div>
+        <div class="bd"><div class="screens" id="screens"></div></div>
+      </section>
+    </div>
+
+    <!-- APARÊNCIA -->
+    <div class="pane" id="pane-aparencia" role="tabpanel">
+      <section class="card">
+        <div class="hd"><h2 data-i18n="appearance.colors">Cores de destaque</h2></div>
+        <div class="bd" style="display:flex;flex-direction:column;gap:14px">
+          <div class="colors">
+            <label class="color"><input type="color" data-path="tema.cor_musica"><div><div style="font-weight:600" data-i18n="screen.music.name">Música</div><code data-code="tema.cor_musica"></code></div></label>
+            <label class="color"><input type="color" data-path="tema.cor_jogo"><div><div style="font-weight:600" data-i18n="screen.game.name">Jogo</div><code data-code="tema.cor_jogo"></code></div></label>
+            <label class="color"><input type="color" data-path="tema.cor_sistema"><div><div style="font-weight:600" data-i18n="screen.system.name">Sistema</div><code data-code="tema.cor_sistema"></code></div></label>
+            <label class="color"><input type="color" data-path="tema.cor_relogio"><div><div style="font-weight:600" data-i18n="screen.clock.name">Relógio</div><code data-code="tema.cor_relogio"></code></div></label>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:600;margin-bottom:8px" data-i18n="appearance.presets">Combinações prontas</div>
+            <div class="presets" id="presets"></div>
+          </div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="hd"><h2 data-i18n="appearance.background">Fundo</h2></div>
+        <div class="bd row">
+          <div class="seg" id="bgSeg" role="group" aria-label="Tipo de fundo" data-i18n-aria-label="appearance.bg_type_aria">
+            <button data-bg="gradiente" data-i18n="appearance.gradient">Degradê</button>
+            <button data-bg="solido" data-i18n="appearance.solid">Cor sólida</button>
+          </div>
+          <label class="color" style="flex:none"><input type="color" data-path="tema.cor_fundo"><div><div style="font-weight:600" data-i18n="appearance.bg_color">Cor do fundo</div><code data-code="tema.cor_fundo"></code></div></label>
+        </div>
+      </section>
+      <section class="card">
+        <div class="hd"><h2 data-i18n="appearance.orientation">Orientação</h2></div>
+        <div class="bd">
+          <div class="orients" id="orients">
+            <button class="orient o-p" data-o="retrato"><span class="shape"></span><span data-i18n="orient.portrait">Retrato</span></button>
+            <button class="orient o-pr" data-o="retrato_invertido"><span class="shape"></span><span data-i18n="orient.portrait_rev">Retrato invertido</span></button>
+            <button class="orient o-l" data-o="paisagem"><span class="shape"></span><span data-i18n="orient.landscape">Paisagem</span></button>
+            <button class="orient o-lr" data-o="paisagem_invertida"><span class="shape"></span><span data-i18n="orient.landscape_rev">Paisagem invertida</span></button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- CONEXÃO -->
+    <div class="pane" id="pane-conexao" role="tabpanel">
+      <section class="card">
+        <div class="hd"><h2 data-i18n="conn.usb_screen">Tela USB</h2></div>
+        <div class="bd" style="display:flex;flex-direction:column;gap:14px">
+          <dl class="kv">
+            <dt data-i18n="conn.state">Estado</dt><dd id="cStatus">—</dd>
+            <dt data-i18n="conn.port">Porta</dt><dd id="cPort">—</dd>
+          </dl>
+          <div class="grid2">
+            <div class="field">
+              <label for="port" data-i18n="conn.com_port">Porta COM</label>
+              <div class="row"><select class="inp" id="port" data-path="tela.porta"></select><button class="btn" id="btnPorts" data-i18n="conn.update">Atualizar</button></div>
+            </div>
+            <div class="field">
+              <label for="rev" data-i18n="conn.model">Modelo</label>
+              <select class="inp" id="rev" data-path="tela.revisao">
+                <option value="A" data-i18n="conn.model_a">Turing / UsbMonitor 3.5" (revisão A)</option>
+                <option value="SIMULADO" data-i18n="conn.model_sim">Simulada (sem tela, só a prévia)</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:600" data-i18n="conn.ports_found">Portas encontradas</div>
+            <div class="ports" id="portsList"><span class="muted">—</span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- STEAM -->
+    <div class="pane" id="pane-steam" role="tabpanel">
+      <section class="card">
+        <div class="hd"><h2 data-i18n="steam.current_game">Jogo atual</h2><span class="spacer"></span><span class="sw"><input type="checkbox" role="switch" aria-label="Mostrar o jogo da Steam" data-i18n-aria-label="steam.show_aria" data-path="steam.ativa"></span></div>
+        <div class="bd" style="display:flex;flex-direction:column;gap:14px">
+          <p class="hint" data-i18n="steam.hint">Mostra na tela o jogo que você está jogando, com capa e tempo jogado.</p>
+          <div class="field">
+            <label data-i18n="steam.source_label">De onde ler</label>
+            <div class="seg" id="steamSrc" role="group" aria-label="Fonte dos dados da Steam" data-i18n-aria-label="steam.source_aria">
+              <button data-src="local" data-i18n="steam.source_local">Steam deste PC (recomendado)</button>
+              <button data-src="web" data-i18n="steam.source_web">Steam Web API</button>
+            </div>
+          </div>
+
+          <div id="steamLocal" class="alert" style="border-color:var(--line);background:var(--panel2)">
+            <div style="flex:1">
+              <h3 id="slTitle">Lendo direto do app da Steam</h3>
+              <p id="slText" style="margin-bottom:0">Sem API key e sem mexer na privacidade: o Bifrost lê o jogo aberto, o tempo jogado e a capa da Steam instalada neste PC.</p>
+            </div>
+          </div>
+
+          <div id="steamWeb" style="display:flex;flex-direction:column;gap:14px">
+            <p class="hint" data-i18n="steam.web_hint">Use a Web API se a Steam deste PC não for encontrada ou se você joga em outro computador. Precisa de uma chave pessoal.</p>
+            <div class="field">
+              <label for="apikey" data-i18n="steam.apikey_label">Steam Web API key</label>
+              <div class="row">
+                <div class="pw"><input class="inp" id="apikey" type="password" autocomplete="off" spellcheck="false" data-path="steam.api_key" placeholder="32 caracteres" data-i18n-placeholder="steam.apikey_placeholder"><button class="btn" id="btnShowKey" type="button" data-i18n="steam.show">Mostrar</button></div>
+                <button class="btn" data-link="steam_apikey" data-i18n="steam.generate_key">Gerar minha key ↗</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="steamid" data-i18n="steam.steamid_label">SteamID64</label>
+              <div class="row">
+                <input class="inp" id="steamid" inputmode="numeric" autocomplete="off" spellcheck="false" data-path="steam.steam_id64" placeholder="7656119…">
+                <button class="btn" data-link="steam_id" data-i18n="steam.discover_id">Descobrir meu ID ↗</button>
+              </div>
+            </div>
+            <div class="alert" style="align-items:flex-start">
+              <div>
+                <h3 data-i18n="steam.not_showing_title">Não aparece o jogo?</h3>
+                <p data-i18n-html="steam.not_showing_body">Pela Web API, a Steam só informa o jogo atual se, em Privacidade, os <b>Detalhes do jogo</b> estiverem como <b>Público</b>.</p>
+                <button class="btn" data-link="steam_privacidade" data-i18n="steam.open_privacy">Abrir privacidade da Steam ↗</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="btn primary" id="btnTestSteam" data-i18n="steam.test">Testar</button>
+            <span class="msg" id="steamMsg"></span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- GERAL -->
+    <div class="pane" id="pane-geral" role="tabpanel">
+      <section class="card">
+        <div class="hd"><h2 data-i18n="general.behavior">Comportamento</h2></div>
+        <div class="bd">
+          <div class="toggle-row"><div><div class="t" data-i18n="general.autostart">Iniciar com o Windows</div><div class="d" data-i18n="general.autostart_desc">Liga o Bifrost em segundo plano quando você entra no Windows.</div></div><span class="sw"><input type="checkbox" role="switch" aria-label="Iniciar com o Windows" data-i18n-aria-label="general.autostart" data-path="geral.iniciar_com_windows"></span></div>
+          <div class="toggle-row"><div><div class="t" data-i18n="general.open_panel">Abrir este painel ao iniciar</div><div class="d" data-i18n="general.open_panel_desc">Se desligado, o Bifrost fica só no ícone perto do relógio.</div></div><span class="sw"><input type="checkbox" role="switch" aria-label="Abrir painel ao iniciar" data-i18n-aria-label="general.open_panel" data-path="geral.abrir_painel_ao_iniciar"></span></div>
+          <div class="toggle-row"><div><div class="t" data-i18n="general.refresh">Atualização da tela</div><div class="d" data-i18n="general.refresh_desc">Mais rápido deixa a barra da música mais suave; mais lento usa menos USB.</div></div>
+            <select class="inp" style="flex:none;width:150px" data-path="geral.atualizacao_ms" data-type="int">
+              <option value="500" data-i18n="general.refresh_05">0,5 segundo</option><option value="1000" data-i18n="general.refresh_1">1 segundo</option><option value="2000" data-i18n="general.refresh_2">2 segundos</option>
+            </select></div>
+          <div class="toggle-row"><div><div class="t" data-i18n="general.language">Idioma</div><div class="d" data-i18n="general.language_desc">Automático usa o idioma configurado no Windows.</div></div>
+            <select class="inp" id="langSel" style="flex:none;width:150px" data-path="geral.idioma">
+              <option value="auto" data-i18n="general.language_auto">Automático</option>
+              <option value="en">English</option>
+              <option value="pt">Português</option>
+              <option value="es">Español</option>
+              <option value="ja">日本語</option>
+              <option value="zh">中文</option>
+            </select></div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="hd"><h2 data-i18n="general.files">Arquivos</h2></div>
+        <div class="bd" style="display:flex;flex-direction:column;gap:12px">
+          <dl class="kv"><dt data-i18n="general.config">Configuração</dt><dd id="iCfg">—</dd><dt data-i18n="general.log">Log</dt><dd id="iLog">—</dd></dl>
+          <div class="row"><button class="btn" id="btnOpenCfg" data-i18n="general.open_folder">Abrir pasta</button><button class="btn" id="btnReset" data-i18n="general.restore_defaults">Restaurar visual padrão</button><span class="spacer"></span><button class="btn" data-link="repositorio" data-i18n="general.github">Projeto no GitHub ↗</button></div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="hd"><h2 data-i18n="general.log">Log</h2><span class="spacer"></span><button class="btn" id="btnLogs" data-i18n="conn.update">Atualizar</button></div>
+        <div class="bd"><pre class="log" id="log">—</pre></div>
+      </section>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span class="dot ok"></span><span id="toastText">Salvo</span></div>
+<div class="offline" id="offline"><div><h2 style="margin:0 0 6px" data-i18n="offline.title">O Bifrost foi fechado</h2><p class="hint" data-i18n="offline.detail">Abra o Bifrost de novo para voltar a controlar a tela.</p></div></div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+// ---------- i18n
+const I18N = {
+"chip.loading":{pt:"Carregando…",en:"Loading…",es:"Cargando…",ja:"読み込み中…",zh:"正在加载…"},
+"btn.reconnect":{pt:"Reconectar",en:"Reconnect",es:"Reconectar",ja:"再接続",zh:"重新连接"},
+"btn.reconnect_title":{pt:"Fechar e abrir a conexão com a tela de novo",en:"Close and reopen the connection to the screen",es:"Cerrar y volver a abrir la conexión con la pantalla",ja:"画面への接続を閉じて再度開きます",zh:"关闭并重新打开与屏幕的连接"},
+"side.preview_title":{pt:"Prévia da tela",en:"Screen preview",es:"Vista previa de la pantalla",ja:"画面プレビュー",zh:"屏幕预览"},
+"side.now_on_screen":{pt:"Na tela agora",en:"On screen now",es:"En pantalla ahora",ja:"現在の画面",zh:"当前屏幕"},
+"side.paused_badge":{pt:"pausada",en:"paused",es:"pausada",ja:"一時停止中",zh:"已暂停"},
+"side.preview_alt":{pt:"Prévia do que está na tela USB",en:"Preview of what's on the USB screen",es:"Vista previa de lo que hay en la pantalla USB",ja:"USB画面に表示されている内容のプレビュー",zh:"USB 屏幕当前显示内容的预览"},
+"side.screen_label":{pt:"Tela",en:"Screen",es:"Pantalla",ja:"画面",zh:"屏幕"},
+"side.prev_title":{pt:"Tela anterior",en:"Previous screen",es:"Pantalla anterior",ja:"前の画面",zh:"上一个屏幕"},
+"side.pause_title":{pt:"Pausar",en:"Pause",es:"Pausar",ja:"一時停止",zh:"暂停"},
+"side.resume_title":{pt:"Retomar",en:"Resume",es:"Reanudar",ja:"再開",zh:"恢复"},
+"side.next_title":{pt:"Próxima tela",en:"Next screen",es:"Siguiente pantalla",ja:"次の画面",zh:"下一个屏幕"},
+"side.brightness":{pt:"Brilho",en:"Brightness",es:"Brillo",ja:"明るさ",zh:"亮度"},
+"side.now_heading":{pt:"Agora",en:"Now",es:"Ahora",ja:"現在の状態",zh:"当前状态"},
+"side.now_music":{pt:"Música",en:"Music",es:"Música",ja:"音楽",zh:"音乐"},
+"side.now_game":{pt:"Jogo",en:"Game",es:"Juego",ja:"ゲーム",zh:"游戏"},
+"side.now_system":{pt:"Sistema",en:"System",es:"Sistema",ja:"システム",zh:"系统"},
+"tab.telas":{pt:"Telas",en:"Screens",es:"Pantallas",ja:"画面",zh:"屏幕"},
+"tab.aparencia":{pt:"Aparência",en:"Appearance",es:"Apariencia",ja:"外観",zh:"外观"},
+"tab.conexao":{pt:"Conexão",en:"Connection",es:"Conexión",ja:"接続",zh:"连接"},
+"tab.steam":{pt:"Steam",en:"Steam",es:"Steam",ja:"Steam",zh:"Steam"},
+"tab.geral":{pt:"Geral",en:"General",es:"General",ja:"全般",zh:"通用"},
+"screens.how_switch":{pt:"Como alternar",en:"How to switch",es:"Cómo alternar",ja:"切り替え方法",zh:"切换方式"},
+"mode.aria":{pt:"Modo de exibição",en:"Display mode",es:"Modo de visualización",ja:"表示モード",zh:"显示模式"},
+"mode.auto":{pt:"Automático",en:"Automatic",es:"Automático",ja:"自動",zh:"自动"},
+"mode.rotate":{pt:"Rotação",en:"Rotate",es:"Rotación",ja:"ローテーション",zh:"轮播"},
+"mode.fixed":{pt:"Tela fixa",en:"Fixed screen",es:"Pantalla fija",ja:"固定画面",zh:"固定屏幕"},
+"mode.switch_every":{pt:"Trocar a cada",en:"Switch every",es:"Cambiar cada",ja:"切り替え間隔",zh:"切换间隔"},
+"mode.always_show":{pt:"Mostrar sempre",en:"Always show",es:"Mostrar siempre",ja:"常に表示",zh:"始终显示"},
+"screens.what_to_show":{pt:"O que exibir",en:"What to show",es:"Qué mostrar",ja:"表示する内容",zh:"显示内容"},
+"screens.order_priority":{pt:"A ordem define a prioridade",en:"The order sets the priority",es:"El orden define la prioridad",ja:"順序が優先度を決めます",zh:"顺序决定优先级"},
+"screens.order_sequence":{pt:"A ordem define a sequência",en:"The order sets the sequence",es:"El orden define la secuencia",ja:"順序が表示順を決めます",zh:"顺序决定播放序列"},
+"mode.hint_auto":{pt:"Mostra a primeira tela da lista que tiver algo acontecendo. Ex.: abriu um jogo, aparece o jogo; parou, volta para a música.",en:"Shows the first screen in the list that has something happening. E.g.: you open a game, it shows the game; you stop, it goes back to music.",es:"Muestra la primera pantalla de la lista que tenga algo sucediendo. Ej.: abres un juego, se muestra el juego; lo cierras, vuelve a la música.",ja:"リストの中で何か起きている最初の画面を表示します。例:ゲームを起動するとゲーム画面に、止めると音楽画面に戻ります。",zh:"显示列表中第一个有内容的屏幕。例如:打开游戏时显示游戏,停止后回到音乐。"},
+"mode.hint_rotate":{pt:"Alterna entre as telas ligadas que têm conteúdo, no intervalo escolhido.",en:"Cycles through the enabled screens that have content, at the chosen interval.",es:"Alterna entre las pantallas activas que tienen contenido, en el intervalo elegido.",ja:"内容があり有効になっている画面を、選んだ間隔で切り替えます。",zh:"按所选间隔在有内容的已启用屏幕之间轮播。"},
+"mode.hint_fixed":{pt:"Mostra sempre a mesma tela, independente do que estiver acontecendo.",en:"Always shows the same screen, no matter what's happening.",es:"Siempre muestra la misma pantalla, sin importar lo que esté pasando.",ja:"何が起きていても常に同じ画面を表示します。",zh:"无论发生什么,始终显示同一个屏幕。"},
+"appearance.colors":{pt:"Cores de destaque",en:"Accent colors",es:"Colores de acento",ja:"アクセントカラー",zh:"强调色"},
+"appearance.presets":{pt:"Combinações prontas",en:"Ready-made combos",es:"Combinaciones predefinidas",ja:"プリセットの組み合わせ",zh:"预设配色"},
+"appearance.background":{pt:"Fundo",en:"Background",es:"Fondo",ja:"背景",zh:"背景"},
+"appearance.bg_type_aria":{pt:"Tipo de fundo",en:"Background type",es:"Tipo de fondo",ja:"背景の種類",zh:"背景类型"},
+"appearance.gradient":{pt:"Degradê",en:"Gradient",es:"Degradado",ja:"グラデーション",zh:"渐变"},
+"appearance.solid":{pt:"Cor sólida",en:"Solid color",es:"Color sólido",ja:"単色",zh:"纯色"},
+"appearance.bg_color":{pt:"Cor do fundo",en:"Background color",es:"Color de fondo",ja:"背景の色",zh:"背景颜色"},
+"appearance.orientation":{pt:"Orientação",en:"Orientation",es:"Orientación",ja:"画面の向き",zh:"屏幕方向"},
+"orient.portrait":{pt:"Retrato",en:"Portrait",es:"Vertical",ja:"縦向き",zh:"竖屏"},
+"orient.portrait_rev":{pt:"Retrato invertido",en:"Portrait flipped",es:"Vertical invertido",ja:"縦向き(反転)",zh:"竖屏(翻转)"},
+"orient.landscape":{pt:"Paisagem",en:"Landscape",es:"Horizontal",ja:"横向き",zh:"横屏"},
+"orient.landscape_rev":{pt:"Paisagem invertida",en:"Landscape flipped",es:"Horizontal invertido",ja:"横向き(反転)",zh:"横屏(翻转)"},
+"conn.usb_screen":{pt:"Tela USB",en:"USB screen",es:"Pantalla USB",ja:"USB画面",zh:"USB 屏幕"},
+"conn.state":{pt:"Estado",en:"State",es:"Estado",ja:"状態",zh:"状态"},
+"conn.port":{pt:"Porta",en:"Port",es:"Puerto",ja:"ポート",zh:"端口"},
+"conn.com_port":{pt:"Porta COM",en:"COM port",es:"Puerto COM",ja:"COMポート",zh:"COM 端口"},
+"conn.update":{pt:"Atualizar",en:"Refresh",es:"Actualizar",ja:"更新",zh:"刷新"},
+"conn.model":{pt:"Modelo",en:"Model",es:"Modelo",ja:"モデル",zh:"型号"},
+"conn.model_a":{pt:"Turing / UsbMonitor 3.5\" (revisão A)",en:"Turing / UsbMonitor 3.5\" (revision A)",es:"Turing / UsbMonitor 3.5\" (revisión A)",ja:"Turing / UsbMonitor 3.5インチ(リビジョンA)",zh:"Turing / UsbMonitor 3.5 英寸(A 版)"},
+"conn.model_sim":{pt:"Simulada (sem tela, só a prévia)",en:"Simulated (no screen, preview only)",es:"Simulada (sin pantalla, solo vista previa)",ja:"シミュレーション(画面なし、プレビューのみ)",zh:"模拟(无屏幕,仅预览)"},
+"conn.ports_found":{pt:"Portas encontradas",en:"Ports found",es:"Puertos encontrados",ja:"検出されたポート",zh:"检测到的端口"},
+"conn.no_ports":{pt:"Nenhuma porta COM encontrada.",en:"No COM port found.",es:"No se encontró ningún puerto COM.",ja:"COMポートが見つかりません。",zh:"未找到 COM 端口。"},
+"conn.auto_port":{pt:"Automática (encontra a tela sozinho)",en:"Automatic (finds the screen on its own)",es:"Automático (encuentra la pantalla solo)",ja:"自動(画面を自動的に検出)",zh:"自动(自动查找屏幕)"},
+"conn.is_screen":{pt:"— tela detectada",en:"— screen detected",es:"— pantalla detectada",ja:"— 画面を検出しました",zh:"— 已检测到屏幕"},
+"conn.not_found_now":{pt:"(não encontrada agora)",en:"(not found now)",es:"(no encontrado ahora)",ja:"(現在見つかりません)",zh:"(当前未找到)"},
+"conn.is_the_screen":{pt:"é a tela",en:"is the screen",es:"es la pantalla",ja:"この画面です",zh:"是该屏幕"},
+"steam.current_game":{pt:"Jogo atual",en:"Current game",es:"Juego actual",ja:"現在のゲーム",zh:"当前游戏"},
+"steam.show_aria":{pt:"Mostrar o jogo da Steam",en:"Show the Steam game",es:"Mostrar el juego de Steam",ja:"Steam のゲームを表示する",zh:"显示 Steam 游戏"},
+"steam.hint":{pt:"Mostra na tela o jogo que você está jogando, com capa e tempo jogado.",en:"Shows the game you're playing on screen, with cover art and playtime.",es:"Muestra en la pantalla el juego que estás jugando, con carátula y tiempo jugado.",ja:"プレイ中のゲームをカバー画像とプレイ時間つきで画面に表示します。",zh:"在屏幕上显示你正在玩的游戏,包含封面和游戏时长。"},
+"steam.source_label":{pt:"De onde ler",en:"Where to read from",es:"De dónde leer",ja:"読み込み元",zh:"数据来源"},
+"steam.source_aria":{pt:"Fonte dos dados da Steam",en:"Steam data source",es:"Fuente de los datos de Steam",ja:"Steam データのソース",zh:"Steam 数据来源"},
+"steam.source_local":{pt:"Steam deste PC (recomendado)",en:"Steam on this PC (recommended)",es:"Steam de esta PC (recomendado)",ja:"このPCのSteam(推奨)",zh:"本机 Steam(推荐)"},
+"steam.source_web":{pt:"Steam Web API",en:"Steam Web API",es:"Steam Web API",ja:"Steam Web API",zh:"Steam Web API"},
+"steam.web_hint":{pt:"Use a Web API se a Steam deste PC não for encontrada ou se você joga em outro computador. Precisa de uma chave pessoal.",en:"Use the Web API if Steam isn't found on this PC, or if you play on another computer. Requires a personal key.",es:"Usa la Web API si no se encuentra Steam en esta PC o si juegas en otra computadora. Necesita una clave personal.",ja:"このPCでSteamが見つからない場合や、別のPCでプレイする場合はWeb APIを使ってください。個人用のキーが必要です。",zh:"如果在本机未找到 Steam,或你在其他电脑上游玩,请使用 Web API。需要一个个人密钥。"},
+"steam.apikey_label":{pt:"Steam Web API key",en:"Steam Web API key",es:"Clave de Steam Web API",ja:"Steam Web API キー",zh:"Steam Web API 密钥"},
+"steam.apikey_placeholder":{pt:"32 caracteres",en:"32 characters",es:"32 caracteres",ja:"32文字",zh:"32 个字符"},
+"steam.show":{pt:"Mostrar",en:"Show",es:"Mostrar",ja:"表示",zh:"显示"},
+"steam.hide":{pt:"Ocultar",en:"Hide",es:"Ocultar",ja:"隠す",zh:"隐藏"},
+"steam.generate_key":{pt:"Gerar minha key ↗",en:"Generate my key ↗",es:"Generar mi clave ↗",ja:"キーを生成 ↗",zh:"生成我的密钥 ↗"},
+"steam.steamid_label":{pt:"SteamID64",en:"SteamID64",es:"SteamID64",ja:"SteamID64",zh:"SteamID64"},
+"steam.discover_id":{pt:"Descobrir meu ID ↗",en:"Find my ID ↗",es:"Descubrir mi ID ↗",ja:"自分のIDを調べる ↗",zh:"查找我的 ID ↗"},
+"steam.not_showing_title":{pt:"Não aparece o jogo?",en:"Game not showing?",es:"¿No aparece el juego?",ja:"ゲームが表示されない場合",zh:"游戏没有显示?"},
+"steam.not_showing_body":{pt:'Pela Web API, a Steam só informa o jogo atual se, em Privacidade, os <b>Detalhes do jogo</b> estiverem como <b>Público</b>.',en:'Through the Web API, Steam only reports the current game if, under Privacy, <b>Game details</b> is set to <b>Public</b>.',es:'Mediante la Web API, Steam solo informa el juego actual si, en Privacidad, los <b>Detalles del juego</b> están como <b>Público</b>.',ja:'Web API では、プライバシー設定で<b>ゲームの詳細</b>が<b>公開</b>になっている場合のみ、現在のゲームが表示されます。',zh:'通过 Web API,只有在隐私设置中将<b>游戏详情</b>设为<b>公开</b>,Steam 才会报告当前游戏。'},
+"steam.open_privacy":{pt:"Abrir privacidade da Steam ↗",en:"Open Steam privacy settings ↗",es:"Abrir privacidad de Steam ↗",ja:"Steam のプライバシー設定を開く ↗",zh:"打开 Steam 隐私设置 ↗"},
+"steam.test":{pt:"Testar",en:"Test",es:"Probar",ja:"テスト",zh:"测试"},
+"steam.testing":{pt:"Testando…",en:"Testing…",es:"Probando…",ja:"テスト中…",zh:"正在测试…"},
+"steam.test_ok_web":{pt:"Funcionou! Conectado como %s",en:"It worked! Connected as %s",es:"¡Funcionó! Conectado como %s",ja:"成功しました!%s として接続しました",zh:"成功!已连接为 %s"},
+"steam.test_ok_local":{pt:"Steam encontrada",en:"Steam found",es:"Steam encontrada",ja:"Steam が見つかりました",zh:"已找到 Steam"},
+"steam.test_ok_local_account":{pt:" — conta %s",en:" — account %s",es:" — cuenta %s",ja:" — アカウント %s",zh:" — 账户 %s"},
+"steam.reading_direct_title":{pt:"Lendo direto do app da Steam",en:"Reading directly from the Steam app",es:"Leyendo directamente desde la app de Steam",ja:"Steam アプリから直接読み取り中",zh:"正在直接从 Steam 应用读取"},
+"steam.not_found_pc_title":{pt:"Não achei a Steam neste PC",en:"Couldn't find Steam on this PC",es:"No encontré Steam en esta PC",ja:"このPCでSteamが見つかりませんでした",zh:"未能在本机找到 Steam"},
+"steam.reading_direct_text":{pt:"Sem API key e sem mexer na privacidade.",en:"No API key needed, and no need to touch your privacy settings.",es:"Sin clave de API y sin tocar la privacidad.",ja:"API キー不要、プライバシー設定の変更も不要です。",zh:"无需 API 密钥,也无需更改隐私设置。"},
+"steam.reading_direct_account":{pt:" Conta: %s.",en:" Account: %s.",es:" Cuenta: %s.",ja:" アカウント:%s。",zh:" 账户:%s。"},
+"steam.reading_direct_folder":{pt:" Pasta: %s",en:" Folder: %s",es:" Carpeta: %s",ja:" フォルダ:%s",zh:" 文件夹:%s"},
+"steam.not_found_pc_text":{pt:"Confira se a Steam está instalada e se você já abriu ela pelo menos uma vez neste usuário do Windows. Se jogar em outro PC, use a Web API.",en:"Check that Steam is installed and that you've opened it at least once under this Windows user. If you play on another PC, use the Web API.",es:"Comprueba que Steam esté instalada y que la hayas abierto al menos una vez con este usuario de Windows. Si juegas en otra PC, usa la Web API.",ja:"Steam がインストールされており、この Windows ユーザーで一度は起動したことがあるか確認してください。別の PC でプレイする場合は Web API を使ってください。",zh:"请确认已安装 Steam,并且已在此 Windows 用户下至少打开过一次。如果你在其他电脑上游玩,请使用 Web API。"},
+"general.behavior":{pt:"Comportamento",en:"Behavior",es:"Comportamiento",ja:"動作設定",zh:"行为设置"},
+"general.autostart":{pt:"Iniciar com o Windows",en:"Start with Windows",es:"Iniciar con Windows",ja:"Windows 起動時に開始",zh:"随 Windows 启动"},
+"general.autostart_desc":{pt:"Liga o Bifrost em segundo plano quando você entra no Windows.",en:"Starts Bifrost in the background when you sign in to Windows.",es:"Inicia Bifrost en segundo plano cuando inicias sesión en Windows.",ja:"Windows にサインインしたときに Bifrost をバックグラウンドで起動します。",zh:"在你登录 Windows 时在后台启动 Bifrost。"},
+"general.open_panel":{pt:"Abrir este painel ao iniciar",en:"Open this panel on startup",es:"Abrir este panel al iniciar",ja:"起動時にこのパネルを開く",zh:"启动时打开此面板"},
+"general.open_panel_desc":{pt:"Se desligado, o Bifrost fica só no ícone perto do relógio.",en:"If off, Bifrost stays only in the tray icon near the clock.",es:"Si está apagado, Bifrost queda solo en el ícono junto al reloj.",ja:"オフにすると、Bifrost は時計の近くのアイコンだけで動作します。",zh:"关闭后,Bifrost 只保留在时钟旁的托盘图标中。"},
+"general.refresh":{pt:"Atualização da tela",en:"Screen refresh rate",es:"Actualización de la pantalla",ja:"画面の更新頻度",zh:"屏幕刷新频率"},
+"general.refresh_desc":{pt:"Mais rápido deixa a barra da música mais suave; mais lento usa menos USB.",en:"Faster makes the music progress bar smoother; slower uses less USB bandwidth.",es:"Más rápido hace que la barra de progreso de la música sea más fluida; más lento usa menos USB.",ja:"速くすると音楽の進捗バーが滑らかになり、遅くするとUSBの負荷が減ります。",zh:"更快会让音乐进度条更流畅;更慢会减少 USB 占用。"},
+"general.refresh_05":{pt:"0,5 segundo",en:"0.5 second",es:"0,5 segundo",ja:"0.5秒",zh:"0.5 秒"},
+"general.refresh_1":{pt:"1 segundo",en:"1 second",es:"1 segundo",ja:"1秒",zh:"1 秒"},
+"general.refresh_2":{pt:"2 segundos",en:"2 seconds",es:"2 segundos",ja:"2秒",zh:"2 秒"},
+"general.language":{pt:"Idioma",en:"Language",es:"Idioma",ja:"言語",zh:"语言"},
+"general.language_desc":{pt:"Automático usa o idioma configurado no Windows.",en:"Automatic uses the language configured in Windows.",es:"Automático usa el idioma configurado en Windows.",ja:"「自動」は Windows に設定されている言語を使用します。",zh:"“自动”将使用 Windows 中配置的语言。"},
+"general.language_auto":{pt:"Automático",en:"Automatic",es:"Automático",ja:"自動",zh:"自动"},
+"general.files":{pt:"Arquivos",en:"Files",es:"Archivos",ja:"ファイル",zh:"文件"},
+"general.config":{pt:"Configuração",en:"Configuration",es:"Configuración",ja:"設定ファイル",zh:"配置"},
+"general.log":{pt:"Log",en:"Log",es:"Registro",ja:"ログ",zh:"日志"},
+"general.open_folder":{pt:"Abrir pasta",en:"Open folder",es:"Abrir carpeta",ja:"フォルダを開く",zh:"打开文件夹"},
+"general.restore_defaults":{pt:"Restaurar visual padrão",en:"Restore default look",es:"Restaurar apariencia predeterminada",ja:"既定の外観に戻す",zh:"恢复默认外观"},
+"general.github":{pt:"Projeto no GitHub ↗",en:"Project on GitHub ↗",es:"Proyecto en GitHub ↗",ja:"GitHub のプロジェクト ↗",zh:"GitHub 项目 ↗"},
+"general.confirm_reset":{pt:"Voltar cores, telas e modo para o padrão? (Steam e porta são mantidas)",en:"Reset colors, screens, and mode to default? (Steam and port settings are kept)",es:"¿Restaurar colores, pantallas y modo al valor predeterminado? (Se mantienen Steam y el puerto)",ja:"色・画面・モードを既定値に戻しますか?(Steam とポートの設定は保持されます)",zh:"要将颜色、屏幕和模式恢复为默认值吗?(将保留 Steam 和端口设置)"},
+"toast.saved":{pt:"Salvo",en:"Saved",es:"Guardado",ja:"保存しました",zh:"已保存"},
+"toast.not_saved":{pt:"Não salvou: %s",en:"Couldn't save: %s",es:"No se guardó: %s",ja:"保存できませんでした:%s",zh:"未能保存:%s"},
+"toast.reconnecting":{pt:"Reconectando…",en:"Reconnecting…",es:"Reconectando…",ja:"再接続しています…",zh:"正在重新连接…"},
+"toast.restored":{pt:"Visual restaurado",en:"Look restored",es:"Apariencia restaurada",ja:"外観を復元しました",zh:"外观已恢复"},
+"toast.config_error":{pt:"Erro lendo a configuração",en:"Error reading the configuration",es:"Error al leer la configuración",ja:"設定の読み込みエラー",zh:"读取配置出错"},
+"toast.select_program":{pt:"Marque ao menos um programa",en:"Select at least one program",es:"Marca al menos un programa",ja:"少なくとも1つのプログラムを選んでください",zh:"请至少选择一个程序"},
+"toast.request_sent":{pt:"Pedido enviado, reconectando…",en:"Request sent, reconnecting…",es:"Solicitud enviada, reconectando…",ja:"リクエストを送信しました。再接続しています…",zh:"请求已发送,正在重新连接…"},
+"offline.title":{pt:"O Bifrost foi fechado",en:"Bifrost was closed",es:"Bifrost se cerró",ja:"Bifrost が終了しました",zh:"Bifrost 已关闭"},
+"offline.detail":{pt:"Abra o Bifrost de novo para voltar a controlar a tela.",en:"Open Bifrost again to control the screen.",es:"Abre Bifrost de nuevo para volver a controlar la pantalla.",ja:"画面を操作するには Bifrost をもう一度開いてください。",zh:"请重新打开 Bifrost 以继续控制屏幕。"},
+"busy.title":{pt:"Outro programa está usando a tela",en:"Another program is using the screen",es:"Otro programa está usando la pantalla",ja:"他のプログラムが画面を使用しています",zh:"其他程序正在使用该屏幕"},
+"busy.found":{pt:"Encontrei estes programas rodando. Eles precisam ser fechados para o Bifrost assumir a tela:",en:"Found these programs running. They need to be closed so Bifrost can take over the screen:",es:"Encontré estos programas en ejecución. Deben cerrarse para que Bifrost tome el control de la pantalla:",ja:"これらのプログラムが実行中です。Bifrost が画面を制御するには、これらを閉じる必要があります:",zh:"发现以下程序正在运行。需要关闭它们,Bifrost 才能接管屏幕:"},
+"busy.none_found":{pt:"Feche o app oficial da tela (UsbMonitor, Turing, etc.) — inclusive pelo ícone perto do relógio.",en:"Close the screen's official app (UsbMonitor, Turing, etc.) — including from the icon near the clock.",es:"Cierra la app oficial de la pantalla (UsbMonitor, Turing, etc.), incluso desde el ícono junto al reloj.",ja:"画面の公式アプリ(UsbMonitor、Turing など)を閉じてください。時計の近くのアイコンからも終了できます。",zh:"请关闭屏幕的官方应用(UsbMonitor、Turing 等)——也可以从时钟旁的图标关闭。"},
+"busy.kill_selected":{pt:"Encerrar selecionados e conectar",en:"Close selected and connect",es:"Cerrar los seleccionados y conectar",ja:"選択したプログラムを終了して接続",zh:"关闭所选程序并连接"},
+"busy.admin_note":{pt:"O Windows vai pedir permissão de administrador.",en:"Windows will ask for administrator permission.",es:"Windows pedirá permiso de administrador.",ja:"Windows が管理者権限の許可を求めます。",zh:"Windows 将请求管理员权限。"},
+"state.untitled":{pt:"Sem título",en:"Untitled",es:"Sin título",ja:"タイトルなし",zh:"无标题"},
+"state.paused":{pt:"pausado",en:"paused",es:"pausado",ja:"一時停止中",zh:"已暂停"},
+"state.nothing_playing":{pt:"Nada tocando",en:"Nothing playing",es:"Nada sonando",ja:"何も再生していません",zh:"没有正在播放的内容"},
+"state.steam_off":{pt:"Steam desligada",en:"Steam off",es:"Steam apagada",ja:"Steam オフ",zh:"Steam 已关闭"},
+"state.turn_on_steam_tab":{pt:"Ligue na aba Steam",en:"Turn it on in the Steam tab",es:"Actívalo en la pestaña Steam",ja:"「Steam」タブでオンにしてください",zh:"请在 Steam 选项卡中开启"},
+"state.no_game_open":{pt:"Nenhum jogo aberto",en:"No game open",es:"Ningún juego abierto",ja:"起動中のゲームはありません",zh:"没有正在运行的游戏"},
+"state.total_played":{pt:"Total %s",en:"Total %s",es:"Total %s",ja:"合計 %s",zh:"总计 %s"},
+"state.steam_of":{pt:"Steam de %s",en:"Steam account: %s",es:"Steam de %s",ja:"Steam アカウント:%s",zh:"Steam 账号:%s"},
+"state.memory":{pt:"Memória %s de %s",en:"Memory %s of %s",es:"Memoria %s de %s",ja:"メモリ %s / %s",zh:"内存 %s / %s"},
+"badge.on_screen":{pt:"na tela",en:"on screen",es:"en pantalla",ja:"表示中",zh:"正在显示"},
+"badge.has_content":{pt:"com conteúdo",en:"has content",es:"con contenido",ja:"内容あり",zh:"有内容"},
+"badge.no_content":{pt:"sem conteúdo agora",en:"no content right now",es:"sin contenido ahora",ja:"現在内容なし",zh:"当前无内容"},
+"badge.steam_off":{pt:"Steam desligada",en:"Steam off",es:"Steam apagada",ja:"Steam オフ",zh:"Steam 已关闭"},
+"badge.turn_on_steam":{pt:"Ligar na aba Steam",en:"Turn on in the Steam tab",es:"Activar en la pestaña Steam",ja:"「Steam」タブでオンにする",zh:"在 Steam 选项卡中开启"},
+"screen.music.name":{pt:"Música",en:"Music",es:"Música",ja:"音楽",zh:"音乐"},
+"screen.music.sub":{pt:"O que está tocando no Windows (Spotify, YouTube…)",en:"What's playing on Windows (Spotify, YouTube…)",es:"Lo que está sonando en Windows (Spotify, YouTube…)",ja:"Windows で再生中のもの(Spotify、YouTube など)",zh:"Windows 中正在播放的内容(Spotify、YouTube 等)"},
+"screen.game.name":{pt:"Jogo",en:"Game",es:"Juego",ja:"ゲーム",zh:"游戏"},
+"screen.game.sub":{pt:"Jogo aberto na Steam, com tempo jogado",en:"Game open on Steam, with playtime",es:"Juego abierto en Steam, con tiempo jugado",ja:"Steam で起動中のゲームとプレイ時間",zh:"通过 Steam 打开的游戏及游戏时长"},
+"screen.system.name":{pt:"Sistema",en:"System",es:"Sistema",ja:"システム",zh:"系统"},
+"screen.system.sub":{pt:"CPU, GPU, memória, disco e rede",en:"CPU, GPU, memory, disk, and network",es:"CPU, GPU, memoria, disco y red",ja:"CPU、GPU、メモリ、ディスク、ネットワーク",zh:"CPU、GPU、内存、磁盘和网络"},
+"screen.clock.name":{pt:"Relógio",en:"Clock",es:"Reloj",ja:"時計",zh:"时钟"},
+"screen.clock.sub":{pt:"Hora e data",en:"Time and date",es:"Hora y fecha",ja:"時刻と日付",zh:"时间和日期"},
+"opt.cover":{pt:"Capa",en:"Cover art",es:"Carátula",ja:"カバー画像",zh:"封面"},
+"opt.album":{pt:"Álbum",en:"Album",es:"Álbum",ja:"アルバム",zh:"专辑"},
+"opt.progress_bar":{pt:"Barra de progresso",en:"Progress bar",es:"Barra de progreso",ja:"進捗バー",zh:"进度条"},
+"opt.show_paused":{pt:"Mostrar quando pausada",en:"Show when paused",es:"Mostrar cuando esté pausada",ja:"一時停止中も表示",zh:"暂停时也显示"},
+"opt.total_time":{pt:"Tempo total",en:"Total time",es:"Tiempo total",ja:"合計時間",zh:"总时长"},
+"opt.last_2weeks":{pt:"Últimas 2 semanas",en:"Last 2 weeks",es:"Últimas 2 semanas",ja:"過去2週間",zh:"近2周"},
+"opt.session_time":{pt:"Tempo da sessão",en:"Session time",es:"Tiempo de la sesión",ja:"セッション時間",zh:"本次时长"},
+"opt.cpu":{pt:"CPU",en:"CPU",es:"CPU",ja:"CPU",zh:"CPU"},
+"opt.gpu":{pt:"GPU",en:"GPU",es:"GPU",ja:"GPU",zh:"GPU"},
+"opt.memory":{pt:"Memória",en:"Memory",es:"Memoria",ja:"メモリ",zh:"内存"},
+"opt.disk":{pt:"Disco",en:"Disk",es:"Disco",ja:"ディスク",zh:"磁盘"},
+"opt.network":{pt:"Rede",en:"Network",es:"Red",ja:"ネットワーク",zh:"网络"},
+"opt.uptime":{pt:"Tempo ligado",en:"Uptime",es:"Tiempo encendido",ja:"起動時間",zh:"开机时长"},
+"opt.24h":{pt:"24 horas",en:"24-hour",es:"24 horas",ja:"24時間表示",zh:"24 小时制"},
+"opt.seconds":{pt:"Segundos",en:"Seconds",es:"Segundos",ja:"秒",zh:"秒"},
+"opt.date":{pt:"Data",en:"Date",es:"Fecha",ja:"日付",zh:"日期"},
+"opt.disk_letter_aria":{pt:"Letra do disco",en:"Disk letter",es:"Letra del disco",ja:"ドライブ文字",zh:"磁盘盘符"},
+"row.up":{pt:"Subir",en:"Move up",es:"Subir",ja:"上へ移動",zh:"上移"},
+"row.down":{pt:"Descer",en:"Move down",es:"Bajar",ja:"下へ移動",zh:"下移"},
+"row.show_x":{pt:"Exibir %s",en:"Show %s",es:"Mostrar %s",ja:"%s を表示",zh:"显示 %s"},
+};
+let currentLang = "en";
+function t(key, ...args) {
+  const row = I18N[key];
+  if (!row) return key;
+  let s = row[currentLang] || row.en || row.pt || key;
+  for (const a of args) s = s.replace("%s", a);
+  return s;
+}
+function detectLang() {
+  if (cfg && cfg.geral && cfg.geral.idioma && cfg.geral.idioma !== "auto") return cfg.geral.idioma;
+  const n = (navigator.language || "en").toLowerCase();
+  if (n.startsWith("pt")) return "pt";
+  if (n.startsWith("es")) return "es";
+  if (n.startsWith("ja")) return "ja";
+  if (n.startsWith("zh")) return "zh";
+  return "en";
+}
+function applyI18n() {
+  currentLang = detectLang();
+  document.documentElement.lang = currentLang;
+  $$("[data-i18n]").forEach(el => el.textContent = t(el.dataset.i18n));
+  $$("[data-i18n-html]").forEach(el => el.innerHTML = t(el.dataset.i18nHtml));
+  $$("[data-i18n-placeholder]").forEach(el => el.placeholder = t(el.dataset.i18nPlaceholder));
+  $$("[data-i18n-aria-label]").forEach(el => el.setAttribute("aria-label", t(el.dataset.i18nAriaLabel)));
+  $$("[data-i18n-title]").forEach(el => el.title = t(el.dataset.i18nTitle));
+  $$("[data-i18n-alt]").forEach(el => el.alt = t(el.dataset.i18nAlt));
+}
+
+const SCREENS = {
+  musica:  {nameKey:"screen.music.name",  icon:"♪",  subKey:"screen.music.sub", color:"cor_musica",
+            opts:[["mostrar_capa","opt.cover"],["mostrar_album","opt.album"],["mostrar_progresso","opt.progress_bar"],["mostrar_pausada","opt.show_paused"]]},
+  jogo:    {nameKey:"screen.game.name",    icon:"🎮︎", subKey:"screen.game.sub", color:"cor_jogo",
+            opts:[["mostrar_capa","opt.cover"],["mostrar_total","opt.total_time"],["mostrar_duas_semanas","opt.last_2weeks"],["mostrar_sessao","opt.session_time"]]},
+  sistema: {nameKey:"screen.system.name", icon:"▣",  subKey:"screen.system.sub", color:"cor_sistema",
+            opts:[["mostrar_cpu","opt.cpu"],["mostrar_gpu","opt.gpu"],["mostrar_ram","opt.memory"],["mostrar_disco","opt.disk"],["mostrar_rede","opt.network"],["mostrar_tempo_ligado","opt.uptime"]]},
+  relogio: {nameKey:"screen.clock.name", icon:"◷",  subKey:"screen.clock.sub", color:"cor_relogio",
+            opts:[["formato_24h","opt.24h"],["mostrar_segundos","opt.seconds"],["mostrar_data","opt.date"]]},
+};
+function screenName(key) { return SCREENS[key] ? t(SCREENS[key].nameKey) : "—"; }
+function screenSub(key) { return SCREENS[key] ? t(SCREENS[key].subKey) : ""; }
+const ICON_PAUSE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/></svg>';
+const ICON_PLAY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2v12l11-6z"/></svg>';
+const MODE_HINT = { automatico: "mode.hint_auto", rotacao: "mode.hint_rotate", fixo: "mode.hint_fixed" };
+const PRESETS = [
+  {n:"Bifrost", c:["#2dd4bf","#66c0f4","#f59e0b","#a5b4fc"]},
+  {n:"Neon",    c:["#22d3ee","#e879f9","#a3e635","#f472b6"]},
+  {n:"Aurora",  c:["#34d399","#60a5fa","#c084fc","#5eead4"]},
+  {n:"Brasa",   c:["#fb923c","#f87171","#fbbf24","#fdba74"]},
+  {n:"Mono",    c:["#e5e7eb","#d1d5db","#9ca3af","#f3f4f6"]},
+];
+
+let cfg = null, state = null, saveTimer = null, lastFrame = -1, portsCache = [];
+
+async function api(path, opts = {}) {
+  const init = {method: opts.method || "GET", headers: {}};
+  if (opts.body !== undefined) { init.headers["Content-Type"] = "application/json"; init.body = JSON.stringify(opts.body); }
+  if (init.method !== "GET") init.headers["X-Bifrost"] = "1";
+  const r = await fetch(path, init);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.erro || r.statusText);
+  return data;
+}
+function getPath(o, p) { return p.split(".").reduce((a, k) => a == null ? a : a[k], o); }
+function setPath(o, p, v) { const ks = p.split("."); const last = ks.pop(); ks.reduce((a, k) => a[k], o)[last] = v; }
+// sanitizeColor: cores vêm da config (que já valida formato no servidor), mas o
+// painel confere de novo antes de usar o valor num atributo style.
+function sanitizeColor(c) { return /^#[0-9a-fA-F]{6}$/.test(c) ? c : "#000000"; }
+function toast(msg, ok = true) {
+  $("#toastText").textContent = msg;
+  $("#toast .dot").className = "dot " + (ok ? "ok" : "bad");
+  $("#toast").classList.add("on");
+  clearTimeout(toast.t); toast.t = setTimeout(() => $("#toast").classList.remove("on"), 1600);
+}
+function scheduleSave(immediate) {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try { cfg = await api("/api/config", {method:"PUT", body: cfg}); renderConfig(); toast(t("toast.saved")); }
+    catch (e) { toast(t("toast.not_saved", e.message), false); }
+  }, immediate ? 0 : 350);
+}
+
+// ---------- ligação dos campos com data-path
+function bindFields() {
+  $$("[data-path]").forEach(el => {
+    const ev = (el.type === "range" || el.type === "text" || el.type === "password" || el.type === "color" || el.tagName === "INPUT" && el.type !== "checkbox") ? "input" : "change";
+    el.addEventListener(ev, () => {
+      let v = el.type === "checkbox" ? el.checked : el.value;
+      if (el.dataset.type === "int") v = parseInt(v, 10);
+      setPath(cfg, el.dataset.path, v);
+      if (el.id === "brightness") $("#brightnessOut").textContent = v + "%";
+      if (el.id === "rotate") $("#rotateOut").textContent = v + "s";
+      const code = document.querySelector(`[data-code="${el.dataset.path}"]`); if (code) code.textContent = v;
+      scheduleSave(el.type === "checkbox" || el.tagName === "SELECT");
+    });
+  });
+}
+function renderConfig() {
+  if (!cfg) return;
+  applyI18n();
+  $$("[data-path]").forEach(el => {
+    if (document.activeElement === el && el.type !== "checkbox") return;
+    const v = getPath(cfg, el.dataset.path);
+    if (el.type === "checkbox") el.checked = !!v; else if (v !== undefined) el.value = v;
+  });
+  $$("[data-code]").forEach(c => c.textContent = getPath(cfg, c.dataset.code));
+  $("#brightnessOut").textContent = cfg.tela.brilho + "%";
+  $("#rotateOut").textContent = cfg.modo.rotacao_segundos + "s";
+  $$("#modeSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === cfg.modo.tipo));
+  $("#modeHint").textContent = t(MODE_HINT[cfg.modo.tipo]);
+  $("#rotateRow").hidden = cfg.modo.tipo !== "rotacao";
+  $("#fixedRow").hidden = cfg.modo.tipo !== "fixo";
+  $("#orderHint").textContent = cfg.modo.tipo === "automatico" ? t("screens.order_priority") : cfg.modo.tipo === "rotacao" ? t("screens.order_sequence") : "";
+  $$("#bgSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.bg === cfg.tema.fundo));
+  $$("#steamSrc button").forEach(b => b.setAttribute("aria-pressed", b.dataset.src === cfg.steam.fonte));
+  $("#steamWeb").hidden = cfg.steam.fonte !== "web";
+  $("#steamLocal").hidden = cfg.steam.fonte === "web";
+  $$("#orients button").forEach(b => b.setAttribute("aria-pressed", b.dataset.o === cfg.tela.orientacao));
+  $("#device").classList.toggle("land", cfg.tela.orientacao.startsWith("paisagem"));
+  renderScreens();
+  renderPortSelect();
+}
+
+// ---------- lista de telas
+function renderScreens() {
+  const box = $("#screens");
+  const order = cfg.telas.ordem;
+  box.innerHTML = "";
+  order.forEach((key, i) => {
+    const meta = SCREENS[key], sc = cfg.telas[key];
+    const needsSteam = key === "jogo" && !cfg.steam.ativa;
+    const accent = sanitizeColor(cfg.tema[meta.color]);
+    const name = screenName(key), sub = screenSub(key);
+
+    const row = document.createElement("div");
+    row.className = "srow" + (sc.ativa ? "" : " off");
+    row.dataset.key = key;
+
+    const top = document.createElement("div"); top.className = "top";
+
+    const move = document.createElement("div"); move.className = "move";
+    const up = document.createElement("button"); up.setAttribute("aria-label", t("row.up")); up.disabled = i === 0; up.textContent = "▲"; up.dataset.up = "";
+    const down = document.createElement("button"); down.setAttribute("aria-label", t("row.down")); down.disabled = i === order.length - 1; down.textContent = "▼"; down.dataset.down = "";
+    move.append(up, down);
+
+    const num = document.createElement("span"); num.className = "num"; num.textContent = String(i + 1);
+
+    const sic = document.createElement("span"); sic.className = "sic";
+    sic.style.background = `color-mix(in srgb, ${accent} 16%, transparent)`;
+    sic.style.color = accent;
+    sic.textContent = meta.icon;
+
+    const info = document.createElement("div"); info.style.flex = "1"; info.style.minWidth = "0";
+    const nameEl = document.createElement("div"); nameEl.className = "name"; nameEl.textContent = name;
+    const subEl = document.createElement("div"); subEl.className = "sub"; subEl.textContent = sub;
+    info.append(nameEl, subEl);
+
+    const badge = document.createElement("span"); badge.dataset.badge = "";
+
+    const sw = document.createElement("span"); sw.className = "sw";
+    const enable = document.createElement("input");
+    enable.type = "checkbox"; enable.setAttribute("role", "switch"); enable.setAttribute("aria-label", t("row.show_x", name));
+    enable.checked = !!sc.ativa; enable.dataset.enable = "";
+    sw.appendChild(enable);
+
+    top.append(move, num, sic, info, badge, sw);
+
+    const opts = document.createElement("div"); opts.className = "opts";
+    meta.opts.forEach(([k, lk]) => {
+      const label = document.createElement("label"); label.className = "chk";
+      const cb = document.createElement("input"); cb.type = "checkbox"; cb.dataset.opt = k; cb.checked = !!sc[k];
+      label.append(cb, document.createTextNode(t(lk)));
+      opts.appendChild(label);
+    });
+    if (key === "sistema") {
+      const label = document.createElement("label"); label.className = "chk";
+      label.appendChild(document.createTextNode(t("opt.disk") + " "));
+      const inp = document.createElement("input");
+      inp.className = "inline-input"; inp.dataset.disk = ""; inp.value = sc.disco; inp.maxLength = 3;
+      inp.setAttribute("aria-label", t("opt.disk_letter_aria"));
+      label.appendChild(inp);
+      opts.appendChild(label);
+    }
+    if (needsSteam) {
+      const btn = document.createElement("button"); btn.className = "btn"; btn.dataset.goto = "steam"; btn.textContent = t("badge.turn_on_steam");
+      opts.appendChild(btn);
+    }
+
+    row.append(top, opts);
+
+    enable.onchange = e => { sc.ativa = e.target.checked; scheduleSave(true); };
+    row.querySelectorAll("[data-opt]").forEach(c => c.onchange = () => { sc[c.dataset.opt] = c.checked; scheduleSave(true); });
+    up.onclick = () => { [order[i-1], order[i]] = [order[i], order[i-1]]; scheduleSave(true); renderScreens(); };
+    down.onclick = () => { [order[i+1], order[i]] = [order[i], order[i+1]]; scheduleSave(true); renderScreens(); };
+    const disk = row.querySelector("[data-disk]"); if (disk) disk.onchange = () => { sc.disco = disk.value; scheduleSave(true); };
+    const go = row.querySelector("[data-goto]"); if (go) go.onclick = () => showTab(go.dataset.goto);
+    box.appendChild(row);
+  });
+  updateBadges();
+}
+
+function badgeFor(key) {
+  const sc = cfg.telas[key];
+  const needsSteam = key === "jogo" && !cfg.steam.ativa;
+  const live = state && state.telas_ativas && state.telas_ativas.includes(key);
+  if (state && state.tela_atual === key) return ["badge showing", t("badge.on_screen")];
+  if (!sc.ativa) return ["", ""];
+  if (needsSteam) return ["badge", t("badge.steam_off")];
+  if (live) return ["badge live", t("badge.has_content")];
+  return ["badge", t("badge.no_content")];
+}
+function updateBadges() {
+  if (!cfg) return;
+  $$("#screens .srow").forEach(row => {
+    const [cls, txt] = badgeFor(row.dataset.key);
+    const b = row.querySelector("[data-badge]");
+    if (b.textContent !== txt) { b.textContent = txt; b.className = cls; }
+  });
+}
+
+// ---------- portas
+function renderPortSelect() {
+  const sel = $("#port");
+  const cur = cfg.tela.porta;
+  const opts = [["AUTO", t("conn.auto_port")]];
+  portsCache.forEach(p => opts.push([p.nome, p.nome + (p.e_a_tela ? " " + t("conn.is_screen") : "")]));
+  if (cur !== "AUTO" && !portsCache.some(p => p.nome === cur)) opts.push([cur, cur + " " + t("conn.not_found_now")]);
+  if (document.activeElement !== sel) {
+    sel.innerHTML = "";
+    opts.forEach(([v, l]) => { const o = new Option(l, v, false, v === cur); sel.appendChild(o); });
+  }
+}
+async function loadPorts() {
+  try { portsCache = await api("/api/portas"); } catch { portsCache = []; }
+  const list = $("#portsList");
+  list.innerHTML = "";
+  if (!portsCache.length) {
+    const span = document.createElement("span"); span.className = "muted"; span.textContent = t("conn.no_ports");
+    list.appendChild(span);
+  } else {
+    portsCache.forEach(p => {
+      const div = document.createElement("div"); div.className = "port";
+      const b = document.createElement("b"); b.textContent = p.nome;
+      const sp = document.createElement("span"); sp.textContent = p.vid_pid || "—";
+      div.append(b, sp);
+      if (p.e_a_tela) {
+        const badge = document.createElement("span"); badge.className = "badge live"; badge.textContent = t("conn.is_the_screen");
+        div.appendChild(badge);
+      }
+      list.appendChild(div);
+    });
+  }
+  if (cfg) renderPortSelect();
+}
+
+// ---------- estado ao vivo
+const STATUS_CLASS = {conectada:"ok", simulada:"ok", conectando:"warn pulse", porta_ocupada:"bad", nao_encontrada:"warn", erro:"bad"};
+function fmtTime(s) { s = Math.max(0, Math.floor(s)); return Math.floor(s/60) + ":" + String(s%60).padStart(2,"0"); }
+const UNITS = {pt:["h","min"], en:["h","min"], es:["h","min"], ja:["時間","分"], zh:["小时","分钟"]};
+function fmtMin(m) {
+  const [uh, um] = UNITS[currentLang] || UNITS.en;
+  if (!m) return "0" + um;
+  const h = Math.floor(m/60), r = m%60;
+  return h ? (r ? `${h}${uh} ${r}${um}` : `${h}${uh}`) : `${r}${um}`;
+}
+function fmtBytes(b) { return b ? (b / 2**30).toFixed(1).replace(".", ",") + " GB" : "—"; }
+
+function renderState() {
+  const s = state;
+  $("#ver").textContent = s.versao ? "v" + s.versao : "";
+  $("#dot").className = "dot " + (STATUS_CLASS[s.status] || "");
+  $("#chipText").textContent = s.status_texto || s.status;
+  $("#cStatus").textContent = s.status_texto || s.status;
+  $("#cPort").textContent = s.porta || "—";
+  $("#curScreen").textContent = screenName(s.tela_atual);
+  $("#pausedBadge").hidden = !s.pausado;
+  const pb = $("#btnPause");
+  if (pb.dataset.p !== String(s.pausado)) {
+    pb.dataset.p = String(s.pausado);
+    pb.innerHTML = s.pausado ? ICON_PLAY : ICON_PAUSE;
+    pb.title = s.pausado ? t("side.resume_title") : t("side.pause_title");
+    pb.setAttribute("aria-label", pb.title);
+  }
+
+  const m = s.musica;
+  if (m.tem_sessao) {
+    $("#fMusic").textContent = m.titulo || t("state.untitled");
+    $("#fMusicSub").textContent = [m.artista, m.app, m.tocando ? fmtTime(m.posicao_s) + " / " + fmtTime(m.duracao_s) : t("state.paused")].filter(Boolean).join(" · ");
+  } else { $("#fMusic").textContent = t("state.nothing_playing"); $("#fMusicSub").textContent = s.erro_musica || ""; }
+
+  const g = s.steam;
+  if (!cfg || !cfg.steam.ativa) { $("#fGame").textContent = t("state.steam_off"); $("#fGameSub").textContent = t("state.turn_on_steam_tab"); }
+  else if (g.jogando) { $("#fGame").textContent = g.nome; $("#fGameSub").textContent = t("state.total_played", fmtMin(g.minutos_total)); }
+  else { $("#fGame").textContent = t("state.no_game_open"); $("#fGameSub").textContent = s.erro_steam || (g.perfil ? t("state.steam_of", g.perfil) : ""); }
+  if (cfg && cfg.steam.fonte !== "web") {
+    const ok = !s.erro_steam;
+    $("#slTitle").textContent = ok ? t("steam.reading_direct_title") : t("steam.not_found_pc_title");
+    $("#slText").textContent = ok
+      ? t("steam.reading_direct_text") + (g.perfil ? t("steam.reading_direct_account", g.perfil) : "") + (g.pasta_steam ? t("steam.reading_direct_folder", g.pasta_steam) : "")
+      : t("steam.not_found_pc_text");
+  }
+
+  const y = s.sistema;
+  const pct = v => v >= 0 ? Math.round(v) + "%" : "—";
+  $("#fSys").textContent = `CPU ${pct(y.cpu)} · GPU ${pct(y.gpu)}`;
+  $("#fSysSub").textContent = t("state.memory", fmtBytes(y.ram_usada), fmtBytes(y.ram_total));
+
+  // aviso de porta ocupada
+  const box = $("#busyBox");
+  if (s.status === "porta_ocupada") {
+    const list = (s.conflitos || []);
+    box.innerHTML = "";
+    const alertBox = document.createElement("div"); alertBox.className = "alert bad"; alertBox.style.marginBottom = "16px";
+    const inner = document.createElement("div"); inner.style.flex = "1";
+    const h3 = document.createElement("h3"); h3.textContent = t("busy.title");
+    const p = document.createElement("p"); p.textContent = list.length ? t("busy.found") : t("busy.none_found");
+    inner.append(h3, p);
+    if (list.length) {
+      const conflicts = document.createElement("div"); conflicts.className = "conflicts";
+      list.forEach(c => {
+        const label = document.createElement("label");
+        const cb = document.createElement("input"); cb.type = "checkbox"; cb.value = String(Number(c.pid) || 0); cb.checked = !!c.certeza;
+        const code = document.createElement("code"); code.textContent = c.nome;
+        const muted = document.createElement("span"); muted.className = "muted"; muted.textContent = `${c.descricao} · PID ${Number(c.pid) || 0}`;
+        label.append(cb, document.createTextNode(" "), code, muted);
+        conflicts.appendChild(label);
+      });
+      inner.appendChild(conflicts);
+      const row = document.createElement("div"); row.className = "row";
+      const kill = document.createElement("button"); kill.className = "btn danger"; kill.id = "btnKill"; kill.textContent = t("busy.kill_selected");
+      const note = document.createElement("span"); note.className = "muted"; note.style.fontSize = "12px"; note.textContent = t("busy.admin_note");
+      row.append(kill, note);
+      inner.appendChild(row);
+    }
+    alertBox.appendChild(inner);
+    box.appendChild(alertBox);
+    const k = $("#btnKill");
+    if (k) k.onclick = async () => {
+      const pids = $$(".conflicts input:checked").map(i => parseInt(i.value, 10));
+      if (!pids.length) { toast(t("toast.select_program"), false); return; }
+      k.disabled = true;
+      try { await api("/api/acao", {method:"POST", body:{acao:"encerrar_conflitos", pids}}); toast(t("toast.request_sent")); }
+      catch (e) { toast(e.message, false); k.disabled = false; }
+    };
+  } else if (box.innerHTML) box.innerHTML = "";
+
+  if (s.frame !== lastFrame) {
+    lastFrame = s.frame;
+    const img = new Image();
+    img.onload = () => { $("#preview").src = img.src; };
+    img.src = "/api/previa.png?f=" + s.frame;
+  }
+  updateBadges();
+}
+
+let failures = 0;
+async function poll() {
+  try { state = await api("/api/estado"); failures = 0; $("#offline").classList.remove("on"); renderState(); }
+  catch { if (++failures > 3) $("#offline").classList.add("on"); }
+  setTimeout(poll, 1000);
+}
+
+// ---------- abas
+function showTab(name) {
+  $$(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.tab === name));
+  $$(".pane").forEach(p => p.classList.toggle("on", p.id === "pane-" + name));
+  if (name === "conexao") loadPorts();
+  if (name === "geral") { loadInfo(); loadLogs(); }
+}
+$$(".tab").forEach(t => t.onclick = () => showTab(t.dataset.tab));
+
+async function loadInfo() {
+  try { const i = await api("/api/info"); $("#iCfg").textContent = i.arquivo_config; $("#iLog").textContent = i.arquivo_log; } catch {}
+}
+async function loadLogs() {
+  try { const l = await api("/api/logs"); const el = $("#log"); el.textContent = l.linhas.join("\n") || "(vazio)"; el.scrollTop = el.scrollHeight; } catch {}
+}
+
+// ---------- ações
+const act = (acao, extra = {}) => api("/api/acao", {method:"POST", body:{acao, ...extra}}).then(s => { state = s; renderState(); }).catch(e => toast(e.message, false));
+$("#btnPrev").onclick = () => act("anterior");
+$("#btnNext").onclick = () => act("proxima");
+$("#btnPause").onclick = () => act(state && state.pausado ? "retomar" : "pausar");
+$("#btnReconnect").onclick = () => { act("reconectar"); toast(t("toast.reconnecting")); };
+$("#btnPorts").onclick = loadPorts;
+$("#btnLogs").onclick = loadLogs;
+$("#btnOpenCfg").onclick = () => act("abrir_pasta_config");
+$$("[data-link]").forEach(b => b.onclick = () => act("abrir_link", {link: b.dataset.link}));
+$("#btnReset").onclick = async () => {
+  if (!confirm(t("general.confirm_reset"))) return;
+  try { cfg = await api("/api/config/padrao", {method:"POST", body:{}}); renderConfig(); toast(t("toast.restored")); } catch (e) { toast(e.message, false); }
+};
+$("#btnShowKey").onclick = () => { const i = $("#apikey"); const show = i.type === "password"; i.type = show ? "text" : "password"; $("#btnShowKey").textContent = show ? t("steam.hide") : t("steam.show"); };
+$("#btnTestSteam").onclick = async () => {
+  const m = $("#steamMsg"); m.className = "msg"; m.textContent = t("steam.testing");
+  try { const r = await api("/api/steam/testar", {method:"POST", body:{fonte: cfg.steam.fonte, api_key: $("#apikey").value, steam_id64: $("#steamid").value}});
+        m.className = "msg ok";
+        m.textContent = cfg.steam.fonte === "web" ? t("steam.test_ok_web", r.perfil)
+          : t("steam.test_ok_local") + (r.perfil ? t("steam.test_ok_local_account", r.perfil) : "") + (r.pasta ? " (" + r.pasta + ")" : ""); }
+  catch (e) { m.className = "msg bad"; m.textContent = e.message; }
+};
+$$("#modeSeg button").forEach(b => b.onclick = () => { cfg.modo.tipo = b.dataset.mode; renderConfig(); scheduleSave(true); });
+$$("#bgSeg button").forEach(b => b.onclick = () => { cfg.tema.fundo = b.dataset.bg; renderConfig(); scheduleSave(true); });
+$$("#steamSrc button").forEach(b => b.onclick = () => { cfg.steam.fonte = b.dataset.src; $("#steamMsg").textContent = ""; renderConfig(); scheduleSave(true); });
+$$("#orients button").forEach(b => b.onclick = () => { cfg.tela.orientacao = b.dataset.o; renderConfig(); scheduleSave(true); });
+$("#presets").innerHTML = PRESETS.map((p, i) => `<button class="preset" data-p="${i}"><i>${p.c.map(c => `<b style="background:${c}"></b>`).join("")}</i>${p.n}</button>`).join("");
+$$("#presets .preset").forEach(b => b.onclick = () => {
+  const c = PRESETS[+b.dataset.p].c;
+  Object.assign(cfg.tema, {cor_musica:c[0], cor_jogo:c[1], cor_sistema:c[2], cor_relogio:c[3]});
+  renderConfig(); scheduleSave(true);
+});
+
+// ---------- início
+applyI18n();
+(async () => {
+  bindFields();
+  try { cfg = await api("/api/config"); renderConfig(); } catch (e) { toast(t("toast.config_error"), false); }
+  loadPorts();
+  poll();
+})();
+</script>
+</body>
+</html>

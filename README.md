@@ -1,2 +1,149 @@
-# Bifrost-screen
-A lightweight bridge between your PC and a Turing/UsbMonitor 3.5" USB screen — real-time now-playing music and current Steam game, replacing the flaky official app.
+<p align="center"><img src="docs/icone.png" width="96" alt=""></p>
+
+# Bifrost
+
+A lightweight panel for the **Turing / UsbMonitor 3.5"** USB screen, replacing the official app:
+shows the **music playing**, the **game open on Steam**, **PC usage** and a **clock**,
+with a control panel so you can choose what shows up and how.
+
+A single `bifrost.exe`, written in Go. No need to install Python or anything else.
+
+## Screenshots
+
+<table>
+<tr>
+<td align="center" width="25%"><img src="docs/preview_jogo.png" width="200" alt="Game screen, open on Steam"><br><sub><b>Game</b> (Steam)</sub></td>
+<td align="center" width="25%"><img src="docs/preview_musica.png" width="200" alt="Music playing screen"><br><sub><b>Music</b></sub></td>
+<td align="center" width="25%"><img src="docs/preview_sistema.png" width="200" alt="System usage screen"><br><sub><b>System</b></sub></td>
+<td align="center" width="25%"><img src="docs/preview_relogio.png" width="200" alt="Clock screen"><br><sub><b>Clock</b></sub></td>
+</tr>
+</table>
+
+<p align="center"><img src="docs/preview_paisagem.png" width="440" alt="Game screen in landscape mode"></p>
+<p align="center"><sub>Portrait, flipped portrait, landscape or flipped landscape — orientation is adjustable from the panel.</sub></p>
+
+<p align="center"><img src="docs/painel.png" width="720" alt="Bifrost control panel"></p>
+
+## What it does
+
+- **Music**: title, artist, album, cover art and progress bar for whatever player shows up
+  in Windows' media controls (Spotify, YouTube in the browser, Deezer, Media Player…). No login required.
+- **Game (Steam)**: name, cover art, total playtime, last 2 weeks and current session time,
+  read directly from the Steam install on your PC, no API key needed.
+- **System**: CPU, GPU, memory, disk, network, and how long the PC has been on.
+- **Clock**: time and date, in 12- or 24-hour format, with or without seconds.
+- **Control panel**, to choose:
+  - which screens show up and in what order;
+  - how they switch: automatic (shows whatever is happening), rotation, or a fixed screen;
+  - what each screen displays;
+  - colors, background, orientation (portrait or landscape) and brightness, with a live preview.
+- **Tray icon** near the clock: opens the panel, switches screens, pauses, reconnects.
+- **Resolves conflicts with the official app**: if UsbMonitor is holding the port,
+  the panel shows what it is and offers a button to close it.
+- Reconnects on its own if the USB cable is unplugged, and only sends the part of the image that changed.
+
+## Languages
+
+Bifrost's panel and screen also speak **English**, **Português**, **Español**, **日本語 (Japanese)** and **中文 (Mandarin)**.
+By default it auto-detects the language configured in Windows; you can also pick one manually in the **General** tab of the panel.
+
+> Note: the physical LCD screen uses an embedded Latin font (Roboto), which doesn't include Japanese/Chinese glyphs.
+> When Japanese or Mandarin is selected, the **physical screen** falls back to English, while the **web panel** and the
+> **tray icon** are fully translated.
+
+## How to use
+
+1. Download `bifrost.exe` from **Releases** (or build it yourself, see below) and put it in a folder.
+2. Open `bifrost.exe`. The panel opens and the rainbow icon appears near the clock.
+3. If the panel warns that **another program is using the screen**, check the official app in
+   the list and click **Close selected and connect**. Windows will ask for administrator permission,
+   because the official app runs as administrator. After that, disable the official app's
+   autostart in Task Manager, under the *Startup apps* tab.
+4. Done. Open a game through Steam and it shows up on the screen within seconds.
+
+Closing the panel window **does not** turn off the screen. Bifrost keeps running from the tray
+icon near the clock. To quit for good: right-click the icon → **Quit**.
+
+### Steam
+
+By default, Bifrost reads the game **directly from the Steam app installed on your PC**. It uses:
+
+- the Windows registry, which reports the open game;
+- library manifests, for the game's name;
+- `localconfig.vdf`, for playtime and account;
+- Steam's image cache, for the cover art.
+
+No API key needed, doesn't depend on profile privacy, works offline, and detects
+the game in about 2 seconds.
+
+If you play on **another PC**, switch the source to **Steam Web API** in the Steam tab of the panel:
+
+1. Click **Generate my key** and create a Steam Web API key (for "Domain Name" you can use `localhost`).
+2. Click **Find my ID** to get your SteamID64 (17 digits).
+3. In Steam's privacy settings, set **Game details** to **Public**.
+4. Click **Test**.
+
+## Where data is stored
+
+`%APPDATA%\Bifrost\` holds `config.json`, `bifrost.log` and the cover art cache.
+
+**Portable mode**: if a `dados` folder exists next to `bifrost.exe`, everything is saved there instead.
+
+**Diagnostics**: `bifrost.exe --diagnostico` generates a `diagnostico.txt` with COM ports, conflicting
+programs, the music playing, and system readings. Useful when opening an issue.
+
+## Building
+
+Requires [Go 1.24+](https://go.dev/dl/).
+
+```bat
+build.bat 1.0.0
+```
+
+Or, from Linux/macOS (cross-compile, no CGO):
+
+```sh
+./build.sh 1.0.0
+```
+
+The executable is written to `dist\bifrost.exe`. To run the tests: `go test ./...`
+
+## Structure
+
+```
+cmd/bifrost/        program entry point, tray icon, panel window, diagnostics
+internal/app/       decides the current screen, keeps the connection, sends the frames
+internal/i18n/      translation catalog and Windows UI-language detection
+internal/lcd/       screen protocol (revision A) and the Windows serial port
+internal/render/    screen drawing (portrait and landscape)
+internal/media/     music playing, via the Windows Media Control (WinRT)
+internal/steam/     Steam: local reading (registry + .vdf files) and Web API
+internal/sysinfo/   CPU, GPU, memory, network and disk (Windows performance counters)
+internal/web/       control panel (local server + UI)
+internal/winutil/   processes, autostart with Windows, single instance
+internal/config/    config.json
+tools/genres/       generates the .exe's icon, manifest and version
+```
+
+The panel is only served on `127.0.0.1` (not visible on the network) and rejects requests coming from other sites.
+
+## Troubleshooting
+
+| Problem | What to do |
+|---|---|
+| "Another program is using the screen" | Use the panel's button to close UsbMonitor, or close it from Task Manager. |
+| "Screen not found" | Check the cable. In the **Connection** tab, see if a port is marked as "is the screen". |
+| Odd colors or orientation | Adjust **Orientation** in the Appearance tab. |
+| Music doesn't show up | The player needs to show up in Windows' media mini-player (the media keys). |
+| Game doesn't show up | Click **Test** in the Steam tab. Games opened outside of Steam aren't detected. On the Web API, check the "Game details" privacy setting. |
+| The screen gets hot | Lower the brightness. These screens get hot above ~50%. |
+
+## License
+
+GPL-3.0-or-later. The screen protocol was ported from
+[turing-smart-screen-python](https://github.com/mathoudebine/turing-smart-screen-python).
+Full credits in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+GPL-3.0 already guarantees you the right to use Bifrost commercially — that can't be taken away
+by this project. If you build a product or service on top of it, we'd appreciate a credit/link
+back to this repository and its author; that's a courtesy request, not a license condition.

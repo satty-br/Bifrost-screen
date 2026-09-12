@@ -1,0 +1,61 @@
+name: Gerar versão
+
+# Roda os testes, compila o bifrost.exe com a versão informada,
+# sobe o .exe como artefato e abre um PR com o bump de versão pronto pra revisar.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Nova versão (ex.: 1.2.0)"
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  gerar-versao:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configura Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: Testes unitários
+        run: go test ./... -v -cover
+
+      - name: Compila bifrost.exe ${{ inputs.version }}
+        shell: cmd
+        run: build.bat ${{ inputs.version }}
+
+      - name: Atualiza o arquivo VERSION
+        shell: pwsh
+        run: Set-Content -Path VERSION -Value "${{ inputs.version }}" -NoNewline
+
+      - name: Sobe bifrost.exe como artefato do workflow
+        uses: actions/upload-artifact@v4
+        with:
+          name: bifrost-${{ inputs.version }}
+          path: dist/bifrost.exe
+
+      - name: Abre o PR com a nova versão
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: versão ${{ inputs.version }}"
+          branch: release/v${{ inputs.version }}
+          title: "Versão ${{ inputs.version }}"
+          body: |
+            Pipeline automática (`Gerar versão`):
+
+            - ✅ Testes unitários passaram
+            - ✅ `bifrost.exe` ${{ inputs.version }} compilado — baixe no artefato `bifrost-${{ inputs.version }}` deste workflow
+            - 📦 `VERSION` e `cmd/bifrost/rsrc_windows_amd64.syso` atualizados (ícone/manifesto/versão do .exe)
+
+            Revise e faça merge para liberar a versão.
+          labels: release
