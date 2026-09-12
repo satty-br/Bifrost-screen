@@ -362,6 +362,7 @@ select.inp{padding-right:8px}
         <div class="bd" style="display:flex;flex-direction:column;gap:14px">
           <dl class="kv" id="mancerStatusRow">
             <dt data-i18n="conn.state">Estado</dt><dd id="mancerStatus">—</dd>
+            <dt data-i18n="mancer.temp">Temperatura enviada</dt><dd id="mancerTemp">—</dd>
           </dl>
           <p class="hint" data-i18n="mancer.macos_note">No macOS este recurso não está disponível (exigiria acesso HID de baixo nível sem suporte nativo).</p>
         </div>
@@ -555,6 +556,7 @@ const I18N = {
 "mancer.off":{pt:"Desligado",en:"Off",es:"Apagado",ja:"オフ",zh:"已关闭"},
 "mancer.remove":{pt:"Remover",en:"Remove",es:"Quitar",ja:"削除",zh:"移除"},
 "mancer.add":{pt:"+ Adicionar",en:"+ Add",es:"+ Añadir",ja:"+ 追加",zh:"+ 添加"},
+"mancer.temp":{pt:"Temperatura enviada",en:"Temperature sent",es:"Temperatura enviada",ja:"送信中の温度",zh:"已发送的温度"},
 "mancer.chip":{pt:"Watercooler",en:"Watercooler",es:"Watercooler",ja:"水冷クーラー",zh:"水冷"},
 "conn.devices":{pt:"Dispositivos",en:"Devices",es:"Dispositivos",ja:"デバイス",zh:"设备"},
 "conn.add_device":{pt:"Adicionar dispositivo",en:"Add device",es:"Añadir dispositivo",ja:"デバイスを追加",zh:"添加设备"},
@@ -956,6 +958,7 @@ function renderState() {
   if (s.mancer) {
     const ms = $("#mancerStatus");
     ms.textContent = !s.mancer.ativado ? t("mancer.off") : s.mancer.conectado ? t("mancer.connected") : (s.mancer.erro || t("mancer.disconnected"));
+    $("#mancerTemp").textContent = s.sistema.cpu_temperatura >= 0 ? Math.round(s.sistema.cpu_temperatura) + "°C" : "—";
     $("#mancerChip").hidden = !s.mancer.ativado;
     if (s.mancer.ativado) {
       $("#mancerDot").className = "dot " + (s.mancer.conectado ? "ok" : "warn");
