@@ -138,10 +138,18 @@ func (s *Server) putConfig(w http.ResponseWriter, r *http.Request) {
 func (s *Server) resetConfig(w http.ResponseWriter, r *http.Request) {
 	cur := s.Store.Get()
 	def := config.Default()
-	// mantém o que é pessoal: credenciais da Steam, porta e preferências gerais
+	// mantém o que é pessoal: credenciais da Steam e preferências gerais.
 	def.Steam = cur.Steam
-	def.Display.Port = cur.Display.Port
 	def.General = cur.General
+	// mantém os dispositivos (ID/nome/porta escolhidos), com o resto de fábrica.
+	factory := def.Devices[0]
+	devices := make([]config.DeviceConfig, len(cur.Devices))
+	for i, d := range cur.Devices {
+		nd := factory
+		nd.ID, nd.Name, nd.Port = d.ID, d.Name, d.Port
+		devices[i] = nd
+	}
+	def.Devices = devices
 	saved, err := s.Store.Set(def)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
@@ -151,7 +159,7 @@ func (s *Server) resetConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) preview(w http.ResponseWriter, r *http.Request) {
-	data, id := s.App.PreviewPNG()
+	data, id := s.App.PreviewPNG(r.URL.Query().Get("dispositivo"))
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("X-Frame", strconv.FormatUint(id, 10))
 	_, _ = w.Write(data)
@@ -172,6 +180,7 @@ func (s *Server) ports(w http.ResponseWriter, r *http.Request) {
 func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Action string   `json:"acao"`
+		Device string   `json:"dispositivo"`
 		PIDs   []uint32 `json:"pids"`
 		Link   string   `json:"link"`
 	}
@@ -181,15 +190,15 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 	}
 	switch req.Action {
 	case "proxima":
-		s.App.Next(1)
+		s.App.Next(req.Device, 1)
 	case "anterior":
-		s.App.Next(-1)
+		s.App.Next(req.Device, -1)
 	case "pausar":
-		s.App.SetPaused(true)
+		s.App.SetPaused(req.Device, true)
 	case "retomar":
-		s.App.SetPaused(false)
+		s.App.SetPaused(req.Device, false)
 	case "reconectar":
-		s.App.Reconnect()
+		s.App.Reconnect(req.Device)
 	case "encerrar_conflitos":
 		if err := s.App.KillConflicts(req.PIDs); err != nil {
 			writeErr(w, http.StatusInternalServerError, err.Error())

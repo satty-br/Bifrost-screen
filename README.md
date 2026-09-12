@@ -36,6 +36,19 @@ Runs on **Windows**, **Linux** and **macOS** — see [Platforms](#platforms) for
 - **Mancer Mystic G1 watercooler display** (optional): sends the live CPU temperature to the small 2-digit HID
   display built into the Mancer Mystic G1 water block, auto-detected over USB (VID `0xAA88` / PID `0x8666`) —
   no port to pick, just a toggle. See [Mancer Mystic G1 display](#mancer-mystic-g1-display) below.
+- **Multiple screens**: connect more than one USB screen and configure each independently —
+  different orientation, brightness, and switching mode per screen (e.g. one fixed on System,
+  another rotating through Music/Game). New screens are auto-detected; see
+  [Multiple screens](#multiple-screens) for details and limitations.
+- **Control panel**, to choose:
+  - which screens show up and in what order;
+  - how they switch: automatic (shows whatever is happening), rotation, or a fixed screen;
+  - what each screen displays;
+  - colors, background, orientation (portrait or landscape) and brightness, with a live preview.
+- **Tray icon** near the clock: opens the panel, switches screens, pauses, reconnects.
+- **Resolves conflicts with the official app**: if UsbMonitor is holding the port,
+  the panel shows what it is and offers a button to close it.
+- Reconnects on its own if the USB cable is unplugged, and only sends the part of the image that changed.
 
 ## Platforms
 
@@ -61,15 +74,24 @@ installed the driver; it never installs anything itself), **LibreHardwareMonitor
 
 On Linux/macOS there's no embedded window, so the panel opens in your default browser instead
 (still only reachable from `127.0.0.1`).
-- **Control panel**, to choose:
-  - which screens show up and in what order;
-  - how they switch: automatic (shows whatever is happening), rotation, or a fixed screen;
-  - what each screen displays;
-  - colors, background, orientation (portrait or landscape) and brightness, with a live preview.
-- **Tray icon** near the clock: opens the panel, switches screens, pauses, reconnects.
-- **Resolves conflicts with the official app**: if UsbMonitor is holding the port,
-  the panel shows what it is and offers a button to close it.
-- Reconnects on its own if the USB cable is unplugged, and only sends the part of the image that changed.
+
+## Multiple screens
+
+Add as many screens as you have in the **Connection** tab. Each one gets its own port, model,
+orientation, brightness, and switching mode — so you can, for example, pin one screen to always
+show System stats and let another rotate through Music/Game.
+
+A screen's **Port** can be left as **Automatic**, in which case Bifrost claims any detected,
+unclaimed screen for it, or pinned to a specific port if you want a stable, predictable mapping.
+
+> **Known limitation**: the cheap Turing/UsbMonitor clones typically report the same hardware
+> VID/PID/serial number for every unit of the same model, so Bifrost can't tell two identical
+> physical screens apart by hardware identity alone — only by which port they're plugged into.
+> If you have two or more identical screens, pin each one to a specific port (once you've
+> figured out which port is which, e.g. by flashing the brightness) for a mapping that survives
+> reboots; leaving them all on "Automatic" still works, but which physical screen ends up as
+> "which" device can shuffle between runs.
+
 
 ## Languages
 

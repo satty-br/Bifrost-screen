@@ -211,6 +211,10 @@ select.inp{padding-right:8px}
     <section class="card" aria-label="Prévia da tela" data-i18n-aria-label="side.preview_title">
       <div class="hd"><h2 data-i18n="side.now_on_screen">Na tela agora</h2><span class="spacer"></span><span class="badge" id="pausedBadge" hidden data-i18n="side.paused_badge">pausada</span></div>
       <div class="bd">
+        <div class="field" id="deviceSelectField" style="margin-bottom:12px">
+          <label for="deviceSel" data-i18n="side.device_label">Dispositivo</label>
+          <select class="inp" id="deviceSel"></select>
+        </div>
         <div class="device" id="device"><div class="glass"><img id="preview" alt="Prévia do que está na tela USB" data-i18n-alt="side.preview_alt" src="/api/previa.png"></div></div>
         <div class="nowrow">
           <div><div class="lbl" data-i18n="side.screen_label">Tela</div><div class="val" id="curScreen">—</div></div>
@@ -222,7 +226,7 @@ select.inp{padding-right:8px}
         </div>
         <div class="range">
           <label for="brightness" data-i18n="side.brightness">Brilho</label>
-          <input type="range" id="brightness" min="0" max="100" step="1" data-path="tela.brilho" data-type="int">
+          <input type="range" id="brightness" min="0" max="100" step="1">
           <output id="brightnessOut">0%</output>
         </div>
       </div>
@@ -253,31 +257,7 @@ select.inp{padding-right:8px}
     <!-- TELAS -->
     <div class="pane on" id="pane-telas" role="tabpanel">
       <section class="card">
-        <div class="hd"><h2 data-i18n="screens.how_switch">Como alternar</h2></div>
-        <div class="bd" style="display:flex;flex-direction:column;gap:12px">
-          <div class="seg" id="modeSeg" role="group" aria-label="Modo de exibição" data-i18n-aria-label="mode.aria">
-            <button data-mode="automatico" data-i18n="mode.auto">Automático</button>
-            <button data-mode="rotacao" data-i18n="mode.rotate">Rotação</button>
-            <button data-mode="fixo" data-i18n="mode.fixed">Tela fixa</button>
-          </div>
-          <p class="hint" id="modeHint"></p>
-          <div class="range" id="rotateRow" hidden style="margin-top:0">
-            <label for="rotate" style="min-width:auto" data-i18n="mode.switch_every">Trocar a cada</label>
-            <input type="range" id="rotate" min="3" max="120" step="1" data-path="modo.rotacao_segundos" data-type="int">
-            <output id="rotateOut">10s</output>
-          </div>
-          <div class="row" id="fixedRow" hidden>
-            <label for="fixed" style="font-weight:600;font-size:13px" data-i18n="mode.always_show">Mostrar sempre</label>
-            <select class="inp" id="fixed" data-path="modo.tela_fixa" style="max-width:220px">
-              <option value="musica" data-i18n="screen.music.name">Música</option><option value="jogo" data-i18n="screen.game.name">Jogo</option>
-              <option value="sistema" data-i18n="screen.system.name">Sistema</option><option value="relogio" data-i18n="screen.clock.name">Relógio</option>
-            </select>
-          </div>
-        </div>
-      </section>
-
-      <section class="card">
-        <div class="hd"><h2 data-i18n="screens.what_to_show">O que exibir</h2><span class="spacer"></span><span class="muted" style="font-size:12px" id="orderHint">A ordem define a prioridade</span></div>
+        <div class="hd"><h2 data-i18n="screens.what_to_show">O que exibir</h2><span class="spacer"></span><span class="muted" style="font-size:12px" id="orderHint">A ordem define a prioridade para todos os dispositivos</span></div>
         <div class="bd"><div class="screens" id="screens"></div></div>
       </section>
     </div>
@@ -309,17 +289,6 @@ select.inp{padding-right:8px}
           <label class="color" style="flex:none"><input type="color" data-path="tema.cor_fundo"><div><div style="font-weight:600" data-i18n="appearance.bg_color">Cor do fundo</div><code data-code="tema.cor_fundo"></code></div></label>
         </div>
       </section>
-      <section class="card">
-        <div class="hd"><h2 data-i18n="appearance.orientation">Orientação</h2></div>
-        <div class="bd">
-          <div class="orients" id="orients">
-            <button class="orient o-p" data-o="retrato"><span class="shape"></span><span data-i18n="orient.portrait">Retrato</span></button>
-            <button class="orient o-pr" data-o="retrato_invertido"><span class="shape"></span><span data-i18n="orient.portrait_rev">Retrato invertido</span></button>
-            <button class="orient o-l" data-o="paisagem"><span class="shape"></span><span data-i18n="orient.landscape">Paisagem</span></button>
-            <button class="orient o-lr" data-o="paisagem_invertida"><span class="shape"></span><span data-i18n="orient.landscape_rev">Paisagem invertida</span></button>
-          </div>
-        </div>
-      </section>
     </div>
 
     <!-- CONEXÃO -->
@@ -327,30 +296,8 @@ select.inp{padding-right:8px}
       <div class="hd" style="padding:0 2px 10px"><h2 data-i18n="conn.devices">Dispositivos</h2></div>
 
       <section class="card">
-        <div class="hd"><h2 data-i18n="conn.usb_screen">Tela USB</h2></div>
-        <div class="bd" style="display:flex;flex-direction:column;gap:14px">
-          <dl class="kv">
-            <dt data-i18n="conn.state">Estado</dt><dd id="cStatus">—</dd>
-            <dt data-i18n="conn.port">Porta</dt><dd id="cPort">—</dd>
-          </dl>
-          <div class="grid2">
-            <div class="field">
-              <label for="port" data-i18n="conn.com_port">Porta COM</label>
-              <div class="row"><select class="inp" id="port" data-path="tela.porta"></select><button class="btn" id="btnPorts" data-i18n="conn.update">Atualizar</button></div>
-            </div>
-            <div class="field">
-              <label for="rev" data-i18n="conn.model">Modelo</label>
-              <select class="inp" id="rev" data-path="tela.revisao">
-                <option value="A" data-i18n="conn.model_a">Turing / UsbMonitor 3.5" (revisão A)</option>
-                <option value="SIMULADO" data-i18n="conn.model_sim">Simulada (sem tela, só a prévia)</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <div style="font-size:13px;font-weight:600" data-i18n="conn.ports_found">Portas encontradas</div>
-            <div class="ports" id="portsList"><span class="muted">—</span></div>
-          </div>
-        </div>
+        <div class="hd"><h2 data-i18n="conn.usb_screen">Telas USB</h2><span class="spacer"></span><button class="btn" id="btnPorts" data-i18n="conn.update">Atualizar</button><button class="btn primary" id="btnAddDevice" data-i18n="conn.add_device">Adicionar tela</button></div>
+        <div class="bd"><div id="devicesList" style="display:flex;flex-direction:column;gap:14px"></div></div>
       </section>
 
       <section class="card" id="mancerCard" hidden>
@@ -383,7 +330,7 @@ select.inp{padding-right:8px}
       </section>
 
       <section class="card" id="addDeviceCard">
-        <div class="hd"><h2 data-i18n="conn.add_device">Adicionar dispositivo</h2></div>
+        <div class="hd"><h2 data-i18n="mancer.add_section">Adicionar dispositivo</h2></div>
         <div class="bd" style="display:flex;flex-direction:column;gap:10px">
           <div class="toggle-row" style="border-bottom:0;padding:0" id="addMancerRow">
             <div><div class="t" data-i18n="mancer.title">Mostrador Mancer Mystic G1</div><div class="d" data-i18n="mancer.enable_desc">Manda a temperatura pro mostrador de 2 dígitos do bloco d'água Mancer Mystic G1 (detecção automática por USB).</div></div>
@@ -518,6 +465,8 @@ const I18N = {
 "side.now_music":{pt:"Música",en:"Music",es:"Música",ja:"音楽",zh:"音乐"},
 "side.now_game":{pt:"Jogo",en:"Game",es:"Juego",ja:"ゲーム",zh:"游戏"},
 "side.now_system":{pt:"Sistema",en:"System",es:"Sistema",ja:"システム",zh:"系统"},
+"side.device_label":{pt:"Dispositivo",en:"Device",es:"Dispositivo",ja:"デバイス",zh:"设备"},
+"side.device_fallback_name":{pt:"Tela",en:"Screen",es:"Pantalla",ja:"画面",zh:"屏幕"},
 "tab.telas":{pt:"Telas",en:"Screens",es:"Pantallas",ja:"画面",zh:"屏幕"},
 "tab.aparencia":{pt:"Aparência",en:"Appearance",es:"Apariencia",ja:"外観",zh:"外观"},
 "tab.conexao":{pt:"Conexão",en:"Connection",es:"Conexión",ja:"接続",zh:"连接"},
@@ -578,11 +527,15 @@ const I18N = {
 "mancer.off":{pt:"Desligado",en:"Off",es:"Apagado",ja:"オフ",zh:"已关闭"},
 "mancer.remove":{pt:"Remover",en:"Remove",es:"Quitar",ja:"削除",zh:"移除"},
 "mancer.add":{pt:"+ Adicionar",en:"+ Add",es:"+ Añadir",ja:"+ 追加",zh:"+ 添加"},
+"mancer.add_section":{pt:"Adicionar dispositivo",en:"Add device",es:"Añadir dispositivo",ja:"デバイスを追加",zh:"添加设备"},
 "mancer.temp":{pt:"Temperatura enviada",en:"Temperature sent",es:"Temperatura enviada",ja:"送信中の温度",zh:"已发送的温度"},
 "mancer.chip":{pt:"Watercooler",en:"Watercooler",es:"Watercooler",ja:"水冷クーラー",zh:"水冷"},
 "conn.devices":{pt:"Dispositivos",en:"Devices",es:"Dispositivos",ja:"デバイス",zh:"设备"},
-"conn.add_device":{pt:"Adicionar dispositivo",en:"Add device",es:"Añadir dispositivo",ja:"デバイスを追加",zh:"添加设备"},
 "conn.no_devices_to_add":{pt:"Todos os dispositivos suportados já foram adicionados.",en:"All supported devices have already been added.",es:"Ya se agregaron todos los dispositivos compatibles.",ja:"サポートされているデバイスはすべて追加済みです。",zh:"所有支持的设备均已添加。"},
+"conn.add_device":{pt:"Adicionar tela",en:"Add screen",es:"Añadir pantalla",ja:"画面を追加",zh:"添加屏幕"},
+"conn.remove_device":{pt:"Remover",en:"Remove",es:"Quitar",ja:"削除",zh:"移除"},
+"conn.confirm_remove":{pt:"Remover esta tela da configuração?",en:"Remove this screen from the configuration?",es:"¿Quitar esta pantalla de la configuración?",ja:"この画面を設定から削除しますか?",zh:"要从配置中移除此屏幕吗?"},
+"conn.device_name_placeholder":{pt:"Nome (opcional)",en:"Name (optional)",es:"Nombre (opcional)",ja:"名前(任意)",zh:"名称(可选)"},
 "steam.current_game":{pt:"Jogo atual",en:"Current game",es:"Juego actual",ja:"現在のゲーム",zh:"当前游戏"},
 "steam.show_aria":{pt:"Mostrar o jogo da Steam",en:"Show the Steam game",es:"Mostrar el juego de Steam",ja:"Steam のゲームを表示する",zh:"显示 Steam 游戏"},
 "steam.hint":{pt:"Mostra na tela o jogo que você está jogando, com capa e tempo jogado.",en:"Shows the game you're playing on screen, with cover art and playtime.",es:"Muestra en la pantalla el juego que estás jugando, con carátula y tiempo jugado.",ja:"プレイ中のゲームをカバー画像とプレイ時間つきで画面に表示します。",zh:"在屏幕上显示你正在玩的游戏,包含封面和游戏时长。"},
@@ -742,7 +695,7 @@ const PRESETS = [
   {n:"Mono",    c:["#e5e7eb","#d1d5db","#9ca3af","#f3f4f6"]},
 ];
 
-let cfg = null, state = null, saveTimer = null, lastFrame = -1, portsCache = [];
+let cfg = null, state = null, saveTimer = null, lastFrame = -1, portsCache = [], selectedDeviceIndex = 0;
 
 async function api(path, opts = {}) {
   const init = {method: opts.method || "GET", headers: {}};
@@ -780,8 +733,6 @@ function bindFields() {
       let v = el.type === "checkbox" ? el.checked : el.value;
       if (el.dataset.type === "int") v = parseInt(v, 10);
       setPath(cfg, el.dataset.path, v);
-      if (el.id === "brightness") $("#brightnessOut").textContent = v + "%";
-      if (el.id === "rotate") $("#rotateOut").textContent = v + "s";
       const code = document.querySelector(`[data-code="${el.dataset.path}"]`); if (code) code.textContent = v;
       scheduleSave(el.type === "checkbox" || el.tagName === "SELECT");
     });
@@ -790,30 +741,29 @@ function bindFields() {
 function renderConfig() {
   if (!cfg) return;
   applyI18n();
+  renderDeviceSelector();
+  const dev = currentDevice();
   $$("[data-path]").forEach(el => {
     if (document.activeElement === el && el.type !== "checkbox") return;
     const v = getPath(cfg, el.dataset.path);
     if (el.type === "checkbox") el.checked = !!v; else if (v !== undefined) el.value = v;
   });
   $$("[data-code]").forEach(c => c.textContent = getPath(cfg, c.dataset.code));
-  $("#brightnessOut").textContent = cfg.tela.brilho + "%";
-  $("#rotateOut").textContent = cfg.modo.rotacao_segundos + "s";
-  $$("#modeSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === cfg.modo.tipo));
-  $("#modeHint").textContent = t(MODE_HINT[cfg.modo.tipo]);
-  $("#rotateRow").hidden = cfg.modo.tipo !== "rotacao";
-  $("#fixedRow").hidden = cfg.modo.tipo !== "fixo";
-  $("#orderHint").textContent = cfg.modo.tipo === "automatico" ? t("screens.order_priority") : cfg.modo.tipo === "rotacao" ? t("screens.order_sequence") : "";
+  if (dev) {
+    if (document.activeElement !== $("#brightness")) $("#brightness").value = dev.brilho;
+    $("#brightnessOut").textContent = dev.brilho + "%";
+    $("#device").classList.toggle("land", dev.orientacao.startsWith("paisagem"));
+  }
+  $("#orderHint").textContent = t("screens.order_priority");
   $$("#bgSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.bg === cfg.tema.fundo));
   $$("#steamSrc button").forEach(b => b.setAttribute("aria-pressed", b.dataset.src === cfg.steam.fonte));
   $("#steamWeb").hidden = cfg.steam.fonte !== "web";
   $("#steamLocal").hidden = cfg.steam.fonte === "web";
-  $$("#orients button").forEach(b => b.setAttribute("aria-pressed", b.dataset.o === cfg.tela.orientacao));
-  $("#device").classList.toggle("land", cfg.tela.orientacao.startsWith("paisagem"));
   $("#mancerCard").hidden = !cfg.mancer.ativado;
   $("#addMancerRow").hidden = cfg.mancer.ativado;
   $("#noDevicesToAdd").hidden = !cfg.mancer.ativado;
   renderScreens();
-  renderPortSelect();
+  renderDevices();
 }
 
 // ---------- lista de telas
@@ -897,8 +847,9 @@ function renderScreens() {
 function badgeFor(key) {
   const sc = cfg.telas[key];
   const needsSteam = key === "jogo" && !cfg.steam.ativa;
-  const live = state && state.telas_ativas && state.telas_ativas.includes(key);
-  if (state && state.tela_atual === key) return ["badge showing", t("badge.on_screen")];
+  const ds = currentDeviceState();
+  const live = ds && ds.telas_ativas && ds.telas_ativas.includes(key);
+  if (ds && ds.tela_atual === key) return ["badge showing", t("badge.on_screen")];
   if (!sc.ativa) return ["", ""];
   if (needsSteam) return ["badge", t("badge.steam_off")];
   if (live) return ["badge live", t("badge.has_content")];
@@ -913,39 +864,140 @@ function updateBadges() {
   });
 }
 
-// ---------- portas
-function renderPortSelect() {
-  const sel = $("#port");
-  const cur = cfg.tela.porta;
-  const opts = [["AUTO", t("conn.auto_port")]];
-  portsCache.forEach(p => opts.push([p.nome, p.nome + (p.e_a_tela ? " " + t("conn.is_screen") : "")]));
-  if (cur !== "AUTO" && !portsCache.some(p => p.nome === cur)) opts.push([cur, cur + " " + t("conn.not_found_now")]);
+// ---------- dispositivos (telas USB)
+function deviceList() { return (cfg && cfg.dispositivos) || []; }
+function currentDevice() {
+  const list = deviceList();
+  if (!list.length) return null;
+  if (selectedDeviceIndex >= list.length) selectedDeviceIndex = 0;
+  return list[selectedDeviceIndex];
+}
+function deviceDisplayName(d, i) { return d.nome || d.porta && d.porta !== "AUTO" && d.porta || (t("side.device_fallback_name") + " " + (i + 1)); }
+function currentDeviceState() {
+  const dev = currentDevice();
+  if (!dev || !state || !state.dispositivos) return null;
+  return state.dispositivos.find(d => d.id === dev.id) || null;
+}
+
+function renderDeviceSelector() {
+  const list = deviceList();
+  currentDevice(); // clamps selectedDeviceIndex
+  $("#deviceSelectField").hidden = list.length <= 1;
+  const sel = $("#deviceSel");
   if (document.activeElement !== sel) {
     sel.innerHTML = "";
-    opts.forEach(([v, l]) => { const o = new Option(l, v, false, v === cur); sel.appendChild(o); });
+    list.forEach((d, i) => sel.appendChild(new Option(deviceDisplayName(d, i), i, false, i === selectedDeviceIndex)));
   }
 }
+
+function renderDevices() {
+  const box = $("#devicesList");
+  const list = deviceList();
+  box.innerHTML = "";
+  list.forEach((dev, i) => {
+    const card = document.createElement("section");
+    card.style.cssText = "border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:14px";
+
+    const head = document.createElement("div"); head.className = "row between";
+    const nameInp = document.createElement("input");
+    nameInp.className = "inp"; nameInp.style.maxWidth = "240px"; nameInp.value = dev.nome || "";
+    nameInp.placeholder = t("conn.device_name_placeholder");
+    nameInp.oninput = () => { dev.nome = nameInp.value; scheduleSave(false); renderDeviceSelector(); };
+    const removeBtn = document.createElement("button"); removeBtn.className = "btn danger"; removeBtn.textContent = t("conn.remove_device");
+    removeBtn.disabled = list.length <= 1;
+    removeBtn.onclick = () => {
+      if (!confirm(t("conn.confirm_remove"))) return;
+      cfg.dispositivos.splice(i, 1);
+      selectedDeviceIndex = 0;
+      renderConfig(); scheduleSave(true);
+    };
+    head.append(nameInp, removeBtn);
+
+    const status = document.createElement("dl"); status.className = "kv"; status.style.marginTop = "10px";
+    const liveState = state && state.dispositivos && state.dispositivos.find(d => d.id === dev.id);
+    const dtS = document.createElement("dt"); dtS.textContent = t("conn.state");
+    const ddS = document.createElement("dd"); ddS.textContent = liveState ? (liveState.status_texto || liveState.status) : "—";
+    const dtP = document.createElement("dt"); dtP.textContent = t("conn.port");
+    const ddP = document.createElement("dd"); ddP.textContent = (liveState && liveState.porta) || "—";
+    status.append(dtS, ddS, dtP, ddP);
+
+    const grid = document.createElement("div"); grid.className = "grid2"; grid.style.marginTop = "10px";
+
+    const portField = document.createElement("div"); portField.className = "field";
+    const portLabel = document.createElement("label"); portLabel.textContent = t("conn.com_port");
+    const portSel = document.createElement("select"); portSel.className = "inp";
+    const opts = [["AUTO", t("conn.auto_port")]];
+    portsCache.forEach(p => opts.push([p.nome, p.nome + (p.e_a_tela ? " " + t("conn.is_screen") : "")]));
+    if (dev.porta !== "AUTO" && !portsCache.some(p => p.nome === dev.porta)) opts.push([dev.porta, dev.porta + " " + t("conn.not_found_now")]);
+    opts.forEach(([v, l]) => portSel.appendChild(new Option(l, v, false, v === dev.porta)));
+    portSel.onchange = () => { dev.porta = portSel.value; scheduleSave(true); };
+    portField.append(portLabel, portSel);
+
+    const revField = document.createElement("div"); revField.className = "field";
+    const revLabel = document.createElement("label"); revLabel.textContent = t("conn.model");
+    const revSel = document.createElement("select"); revSel.className = "inp";
+    revSel.appendChild(new Option(t("conn.model_a"), "A", false, dev.revisao === "A"));
+    revSel.appendChild(new Option(t("conn.model_sim"), "SIMULADO", false, dev.revisao === "SIMULADO"));
+    revSel.onchange = () => { dev.revisao = revSel.value; scheduleSave(true); };
+    revField.append(revLabel, revSel);
+
+    grid.append(portField, revField);
+
+    const orientTitle = document.createElement("div");
+    orientTitle.style.cssText = "font-size:13px;font-weight:600;margin:14px 0 8px";
+    orientTitle.textContent = t("appearance.orientation");
+    const orients = document.createElement("div"); orients.className = "orients";
+    [["retrato", "o-p", "orient.portrait"], ["retrato_invertido", "o-pr", "orient.portrait_rev"],
+     ["paisagem", "o-l", "orient.landscape"], ["paisagem_invertida", "o-lr", "orient.landscape_rev"]].forEach(([val, cls, key]) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "orient " + cls;
+      b.setAttribute("aria-pressed", val === dev.orientacao);
+      const shape = document.createElement("span"); shape.className = "shape";
+      const label = document.createElement("span"); label.textContent = t(key);
+      b.append(shape, label);
+      b.onclick = () => { dev.orientacao = val; renderConfig(); scheduleSave(true); };
+      orients.appendChild(b);
+    });
+
+    const modeTitle = document.createElement("div");
+    modeTitle.style.cssText = "font-size:13px;font-weight:600;margin:14px 0 8px";
+    modeTitle.textContent = t("screens.how_switch");
+    const seg = document.createElement("div"); seg.className = "seg";
+    [["automatico", "mode.auto"], ["rotacao", "mode.rotate"], ["fixo", "mode.fixed"]].forEach(([val, key]) => {
+      const b = document.createElement("button"); b.type = "button"; b.textContent = t(key);
+      b.setAttribute("aria-pressed", dev.modo.tipo === val);
+      b.onclick = () => { dev.modo.tipo = val; renderConfig(); scheduleSave(true); };
+      seg.appendChild(b);
+    });
+    const modeHint = document.createElement("p"); modeHint.className = "hint"; modeHint.style.margin = "8px 0 0";
+    modeHint.textContent = t(MODE_HINT[dev.modo.tipo]);
+    card.append(head, status, grid, orientTitle, orients, modeTitle, seg, modeHint);
+
+    if (dev.modo.tipo === "rotacao") {
+      const row = document.createElement("div"); row.className = "range"; row.style.marginTop = "10px";
+      const l = document.createElement("label"); l.style.minWidth = "auto"; l.textContent = t("mode.switch_every");
+      const inp = document.createElement("input"); inp.type = "range"; inp.min = 3; inp.max = 120; inp.step = 1; inp.value = dev.modo.rotacao_segundos;
+      const out = document.createElement("output"); out.textContent = dev.modo.rotacao_segundos + "s";
+      inp.oninput = () => { dev.modo.rotacao_segundos = parseInt(inp.value, 10); out.textContent = inp.value + "s"; scheduleSave(false); };
+      row.append(l, inp, out);
+      card.appendChild(row);
+    }
+    if (dev.modo.tipo === "fixo") {
+      const row = document.createElement("div"); row.className = "row"; row.style.marginTop = "10px";
+      const l = document.createElement("label"); l.style.cssText = "font-weight:600;font-size:13px"; l.textContent = t("mode.always_show");
+      const sel = document.createElement("select"); sel.className = "inp"; sel.style.maxWidth = "220px";
+      ["musica", "jogo", "sistema", "relogio"].forEach(k => sel.appendChild(new Option(screenName(k), k, false, dev.modo.tela_fixa === k)));
+      sel.onchange = () => { dev.modo.tela_fixa = sel.value; scheduleSave(true); };
+      row.append(l, sel);
+      card.appendChild(row);
+    }
+
+    box.appendChild(card);
+  });
+}
+
 async function loadPorts() {
   try { portsCache = await api("/api/portas"); } catch { portsCache = []; }
-  const list = $("#portsList");
-  list.innerHTML = "";
-  if (!portsCache.length) {
-    const span = document.createElement("span"); span.className = "muted"; span.textContent = t("conn.no_ports");
-    list.appendChild(span);
-  } else {
-    portsCache.forEach(p => {
-      const div = document.createElement("div"); div.className = "port";
-      const b = document.createElement("b"); b.textContent = p.nome;
-      const sp = document.createElement("span"); sp.textContent = p.vid_pid || "—";
-      div.append(b, sp);
-      if (p.e_a_tela) {
-        const badge = document.createElement("span"); badge.className = "badge live"; badge.textContent = t("conn.is_the_screen");
-        div.appendChild(badge);
-      }
-      list.appendChild(div);
-    });
-  }
-  if (cfg) renderPortSelect();
+  if (cfg) renderDevices();
 }
 
 // ---------- estado ao vivo
@@ -963,18 +1015,30 @@ function fmtBytes(b) { return b ? (b / 2**30).toFixed(1).replace(".", ",") + " G
 function renderState() {
   const s = state;
   $("#ver").textContent = s.versao ? "v" + s.versao : "";
-  $("#dot").className = "dot " + (STATUS_CLASS[s.status] || "");
-  $("#chipText").textContent = s.status_texto || s.status;
-  $("#cStatus").textContent = s.status_texto || s.status;
-  $("#cPort").textContent = s.porta || "—";
-  $("#curScreen").textContent = screenName(s.tela_atual);
-  $("#pausedBadge").hidden = !s.pausado;
-  const pb = $("#btnPause");
-  if (pb.dataset.p !== String(s.pausado)) {
-    pb.dataset.p = String(s.pausado);
-    pb.innerHTML = s.pausado ? ICON_PLAY : ICON_PAUSE;
-    pb.title = s.pausado ? t("side.resume_title") : t("side.pause_title");
-    pb.setAttribute("aria-label", pb.title);
+  const ds = currentDeviceState();
+  if (ds) {
+    $("#dot").className = "dot " + (STATUS_CLASS[ds.status] || "");
+    $("#chipText").textContent = ds.status_texto || ds.status;
+    $("#curScreen").textContent = screenName(ds.tela_atual);
+    $("#pausedBadge").hidden = !ds.pausado;
+    const pb = $("#btnPause");
+    if (pb.dataset.p !== String(ds.pausado)) {
+      pb.dataset.p = String(ds.pausado);
+      pb.innerHTML = ds.pausado ? ICON_PLAY : ICON_PAUSE;
+      pb.title = ds.pausado ? t("side.resume_title") : t("side.pause_title");
+      pb.setAttribute("aria-label", pb.title);
+    }
+    if (ds.frame !== lastFrame) {
+      lastFrame = ds.frame;
+      const img = new Image();
+      img.onload = () => { $("#preview").src = img.src; };
+      img.src = "/api/previa.png?dispositivo=" + encodeURIComponent(ds.id) + "&f=" + ds.frame;
+    }
+  } else {
+    $("#dot").className = "dot";
+    $("#chipText").textContent = "—";
+    $("#curScreen").textContent = "—";
+    $("#pausedBadge").hidden = true;
   }
 
   if (s.mancer) {
@@ -1043,10 +1107,16 @@ function renderState() {
     };
   } else if (!s.atualizacao && !upBox.dataset.installing) upBox.innerHTML = "";
 
-  // aviso de porta ocupada
+  // aviso de porta ocupada (agrega os dispositivos que estiverem com a porta ocupada)
   const box = $("#busyBox");
-  if (s.status === "porta_ocupada") {
-    const list = (s.conflitos || []);
+  const busyDevices = (s.dispositivos || []).filter(d => d.status === "porta_ocupada");
+  if (busyDevices.length) {
+    const seenPid = new Set();
+    const list = [];
+    busyDevices.forEach(d => (d.conflitos || []).forEach(c => {
+      const pid = Number(c.pid) || 0;
+      if (!seenPid.has(pid)) { seenPid.add(pid); list.push(c); }
+    }));
     box.innerHTML = "";
     const alertBox = document.createElement("div"); alertBox.className = "alert bad"; alertBox.style.marginBottom = "16px";
     const inner = document.createElement("div"); inner.style.flex = "1";
@@ -1082,12 +1152,6 @@ function renderState() {
     };
   } else if (box.innerHTML) box.innerHTML = "";
 
-  if (s.frame !== lastFrame) {
-    lastFrame = s.frame;
-    const img = new Image();
-    img.onload = () => { $("#preview").src = img.src; };
-    img.src = "/api/previa.png?f=" + s.frame;
-  }
   updateBadges();
 }
 
@@ -1124,10 +1188,14 @@ async function loadLogs() {
 }
 
 // ---------- ações
-const act = (acao, extra = {}) => api("/api/acao", {method:"POST", body:{acao, ...extra}}).then(s => { state = s; renderState(); }).catch(e => toast(e.message, false));
+const act = (acao, extra = {}) => {
+  const dev = currentDevice();
+  const body = {acao, dispositivo: dev ? dev.id : "", ...extra};
+  return api("/api/acao", {method:"POST", body}).then(s => { state = s; renderState(); }).catch(e => toast(e.message, false));
+};
 $("#btnPrev").onclick = () => act("anterior");
 $("#btnNext").onclick = () => act("proxima");
-$("#btnPause").onclick = () => act(state && state.pausado ? "retomar" : "pausar");
+$("#btnPause").onclick = () => { const ds = currentDeviceState(); act(ds && ds.pausado ? "retomar" : "pausar"); };
 $("#btnReconnect").onclick = () => { act("reconectar"); toast(t("toast.reconnecting")); };
 $("#btnPorts").onclick = loadPorts;
 
@@ -1186,16 +1254,27 @@ $("#btnTestSteam").onclick = async () => {
           : t("steam.test_ok_local") + (r.perfil ? t("steam.test_ok_local_account", r.perfil) : "") + (r.pasta ? " (" + r.pasta + ")" : ""); }
   catch (e) { m.className = "msg bad"; m.textContent = e.message; }
 };
-$$("#modeSeg button").forEach(b => b.onclick = () => { cfg.modo.tipo = b.dataset.mode; renderConfig(); scheduleSave(true); });
 $$("#bgSeg button").forEach(b => b.onclick = () => { cfg.tema.fundo = b.dataset.bg; renderConfig(); scheduleSave(true); });
 $$("#steamSrc button").forEach(b => b.onclick = () => { cfg.steam.fonte = b.dataset.src; $("#steamMsg").textContent = ""; renderConfig(); scheduleSave(true); });
-$$("#orients button").forEach(b => b.onclick = () => { cfg.tela.orientacao = b.dataset.o; renderConfig(); scheduleSave(true); });
 $("#presets").innerHTML = PRESETS.map((p, i) => `<button class="preset" data-p="${i}"><i>${p.c.map(c => `<b style="background:${c}"></b>`).join("")}</i>${p.n}</button>`).join("");
 $$("#presets .preset").forEach(b => b.onclick = () => {
   const c = PRESETS[+b.dataset.p].c;
   Object.assign(cfg.tema, {cor_musica:c[0], cor_jogo:c[1], cor_sistema:c[2], cor_relogio:c[3]});
   renderConfig(); scheduleSave(true);
 });
+$("#deviceSel").onchange = () => { selectedDeviceIndex = parseInt($("#deviceSel").value, 10) || 0; renderConfig(); renderState(); };
+$("#brightness").oninput = () => {
+  const dev = currentDevice(); if (!dev) return;
+  dev.brilho = parseInt($("#brightness").value, 10);
+  $("#brightnessOut").textContent = dev.brilho + "%";
+  scheduleSave(false);
+};
+$("#btnAddDevice").onclick = () => {
+  if (!cfg.dispositivos) cfg.dispositivos = [];
+  cfg.dispositivos.push({id:"", nome:"", porta:"AUTO", revisao:"A", orientacao:"retrato", brilho:20, modo:{tipo:"automatico", rotacao_segundos:10, tela_fixa:"relogio"}});
+  selectedDeviceIndex = cfg.dispositivos.length - 1;
+  renderConfig(); scheduleSave(true);
+};
 
 // ---------- início
 applyI18n();

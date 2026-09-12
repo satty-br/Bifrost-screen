@@ -13,6 +13,8 @@ func TestAutoModePriority(t *testing.T) {
 	c := config.Default()
 	c.Steam.Enabled = true
 	a := &App{}
+	d := newDevice("t")
+	mode := c.Devices[0].Mode
 	now := time.Now()
 	playing := media.Info{HasSession: true, Playing: true}
 	game := steam.Status{Playing: true}
@@ -28,7 +30,7 @@ func TestAutoModePriority(t *testing.T) {
 		{"nada: cai no sistema", media.Info{}, steam.Status{}, config.ScreenSystem},
 	}
 	for _, tc := range cases {
-		got := a.choose(now, c, a.activeScreens(c, tc.m, tc.g))
+		got := a.choose(d, now, mode, a.activeScreens(c, tc.m, tc.g))
 		if got != tc.want {
 			t.Errorf("%s: esperava %s, veio %s", tc.name, tc.want, got)
 		}
@@ -36,38 +38,40 @@ func TestAutoModePriority(t *testing.T) {
 
 	// música pausada some quando "mostrar pausada" está desligado
 	c.Screens.Music.ShowWhenPaused = false
-	if got := a.choose(now, c, a.activeScreens(c, media.Info{HasSession: true}, steam.Status{})); got != config.ScreenSystem {
+	if got := a.choose(d, now, mode, a.activeScreens(c, media.Info{HasSession: true}, steam.Status{})); got != config.ScreenSystem {
 		t.Errorf("pausada escondida: veio %s", got)
 	}
 	// Steam desligada não mostra jogo mesmo com status
 	c.Steam.Enabled = false
-	if got := a.choose(now, c, a.activeScreens(c, playing, game)); got != config.ScreenMusic {
+	if got := a.choose(d, now, mode, a.activeScreens(c, playing, game)); got != config.ScreenMusic {
 		t.Errorf("steam desligada: veio %s", got)
 	}
 	// tudo desligado: relógio
 	c.Screens.Music.Enabled, c.Screens.System.Enabled, c.Screens.Clock.Enabled = false, false, false
-	if got := a.choose(now, c, a.activeScreens(c, playing, game)); got != config.ScreenClock {
+	if got := a.choose(d, now, mode, a.activeScreens(c, playing, game)); got != config.ScreenClock {
 		t.Errorf("tudo desligado: veio %s", got)
 	}
 }
 
 func TestRotateAndFixed(t *testing.T) {
 	c := config.Default()
-	c.Mode.Type = config.ModeRotate
-	c.Mode.RotateSeconds = 5
+	mode := c.Devices[0].Mode
+	mode.Type = config.ModeRotate
+	mode.RotateSeconds = 5
 	a := &App{}
+	d := newDevice("t")
 	active := []config.Screen{config.ScreenMusic, config.ScreenSystem, config.ScreenClock}
 	start := time.Now()
 	seen := map[config.Screen]bool{}
 	for i := 0; i < 6; i++ {
-		seen[a.choose(start.Add(time.Duration(i)*6*time.Second), c, active)] = true
+		seen[a.choose(d, start.Add(time.Duration(i)*6*time.Second), mode, active)] = true
 	}
 	if len(seen) != 3 {
 		t.Errorf("rotação deveria passar pelas 3 telas, passou por %v", seen)
 	}
-	c.Mode.Type = config.ModeFixed
-	c.Mode.Fixed = config.ScreenGame
-	if got := a.choose(start, c, active); got != config.ScreenGame {
+	mode.Type = config.ModeFixed
+	mode.Fixed = config.ScreenGame
+	if got := a.choose(d, start, mode, active); got != config.ScreenGame {
 		t.Errorf("fixo: veio %s", got)
 	}
 }
@@ -75,13 +79,14 @@ func TestRotateAndFixed(t *testing.T) {
 func TestNormalize(t *testing.T) {
 	c := config.Config{}
 	c.Screens.Order = []config.Screen{"relogio", "xyz", "relogio"}
-	c.Display.Brightness = 500
+	c.Devices = []config.DeviceConfig{{Brightness: 500}}
 	c.Theme.AccentMusic = "vermelho"
 	c.Normalize()
 	if len(c.Screens.Order) != 4 || c.Screens.Order[0] != config.ScreenClock {
 		t.Errorf("ordem: %v", c.Screens.Order)
 	}
-	if c.Display.Brightness != 100 || c.Theme.AccentMusic != "#2dd4bf" || c.Display.Port != "AUTO" {
-		t.Errorf("normalização falhou: %+v", c.Display)
+	if c.Devices[0].Brightness != 100 || c.Theme.AccentMusic != "#2dd4bf" || c.Devices[0].Port != "AUTO" {
+		t.Errorf("normalização falhou: %+v", c.Devices[0])
 	}
 }
+
