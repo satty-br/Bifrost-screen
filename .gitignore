@@ -3,6 +3,11 @@
 *.exe
 bifrost-linux
 
+# saída de "go test -coverprofile"
+cov_*
+*.cover
+coverage.out
+
 # dados locais (modo portátil)
 dados/
 
