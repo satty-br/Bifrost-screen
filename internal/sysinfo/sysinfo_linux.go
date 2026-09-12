@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build linux
 
 package sysinfo
 
@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// Start usa /proc no Linux (serve para testar o visual fora do Windows).
+// Start usa /proc no Linux.
 func (s *Sampler) Start(interval time.Duration) {
 	go func() {
 		prevIdle, prevTotal := cpuTimes()
@@ -38,9 +38,6 @@ func (s *Sampler) Start(interval time.Duration) {
 		}
 	}()
 }
-
-// SetForTest injeta uma leitura (usado no preview/testes).
-func (s *Sampler) SetForTest(st Stats) { s.store(st) }
 
 func cpuTimes() (idle, total uint64) {
 	f, err := os.Open("/proc/stat")

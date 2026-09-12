@@ -28,3 +28,17 @@ jobs:
 
       - name: Testes unitários
         run: go test ./... -v -cover
+
+      - name: Checagem de compilação (Linux amd64/arm64)
+        shell: pwsh
+        run: |
+          $env:GOOS="linux"; $env:CGO_ENABLED="0"
+          $env:GOARCH="amd64"; go build ./...
+          $env:GOARCH="arm64"; go build ./...
+
+      - name: Checagem de compilação (macOS amd64/arm64)
+        shell: pwsh
+        run: |
+          $env:GOOS="darwin"; $env:CGO_ENABLED="0"
+          $env:GOARCH="amd64"; go build ./...
+          $env:GOARCH="arm64"; go build ./...

@@ -5,18 +5,9 @@ package lcd
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"unsafe"
 
-	"go.bug.st/serial/enumerator"
 	"golang.org/x/sys/windows"
-)
-
-// Identificação USB das telas revisão A.
-const (
-	revAVID    = "1A86"
-	revAPID    = "5722"
-	revASerial = "USB35INCHIPSV2"
 )
 
 type winPort struct {
@@ -106,44 +97,3 @@ func (p *winPort) Write(b []byte) (int, error) {
 func (p *winPort) Flush() error { return windows.PurgeComm(p.h, purgeRxClear) }
 
 func (p *winPort) Close() error { return windows.CloseHandle(p.h) }
-
-// PortInfo descreve uma porta COM encontrada no sistema.
-type PortInfo struct {
-	Name     string `json:"nome"`
-	VIDPID   string `json:"vid_pid"`
-	Serial   string `json:"serial"`
-	IsScreen bool   `json:"e_a_tela"`
-}
-
-// ListPorts lista as portas COM e marca a que parece ser a tela.
-func ListPorts() ([]PortInfo, error) {
-	ports, err := enumerator.GetDetailedPortsList()
-	if err != nil {
-		return nil, err
-	}
-	var out []PortInfo
-	for _, p := range ports {
-		info := PortInfo{Name: p.Name, Serial: p.SerialNumber}
-		if p.IsUSB {
-			info.VIDPID = strings.ToUpper(p.VID + ":" + p.PID)
-			info.IsScreen = strings.EqualFold(p.SerialNumber, revASerial) ||
-				(strings.EqualFold(p.VID, revAVID) && strings.EqualFold(p.PID, revAPID))
-		}
-		out = append(out, info)
-	}
-	return out, nil
-}
-
-// DetectRevA encontra a porta da tela revisão A.
-func DetectRevA() (string, error) {
-	ports, err := ListPorts()
-	if err != nil {
-		return "", err
-	}
-	for _, p := range ports {
-		if p.IsScreen {
-			return p.Name, nil
-		}
-	}
-	return "", ErrNotFound
-}

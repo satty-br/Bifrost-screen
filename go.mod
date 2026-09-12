@@ -8,6 +8,7 @@ require (
 	fyne.io/systray v1.12.2
 	github.com/fogleman/gg v1.3.0
 	github.com/go-ole/go-ole v1.3.0
+	github.com/godbus/dbus/v5 v5.1.0
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/jchv/go-webview2 v0.0.0-20260205173254-56598839c808
 	github.com/saltosystems/winrt-go v0.0.0-20260513072510-45f10383b2b8
@@ -19,7 +20,6 @@ require (
 
 require (
 	github.com/creack/goselect v0.1.2 // indirect
-	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/jchv/go-winloader v0.0.0-20250406163304-c1995be93bd1 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 )
