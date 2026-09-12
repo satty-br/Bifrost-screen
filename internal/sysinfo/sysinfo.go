@@ -49,8 +49,9 @@ type Sampler struct {
 	disk    string
 	history []float64
 
-	gpuTemp   float64 // cache da temperatura da GPU (nvidia-smi é caro para chamar toda hora)
-	gpuTempAt time.Time
+	gpuTemp    float64 // cache da temperatura da GPU (consultar o driver toda hora é caro)
+	gpuTempSrc string  // nome da fonte que respondeu (NVML, ADL, nvidia-smi)
+	gpuTempAt  time.Time
 
 	hwCPUTemp, hwGPUTemp float64 // cache dos sensores externos (HWiNFO, LHM, Afterburner…)
 	hwTempSource         string

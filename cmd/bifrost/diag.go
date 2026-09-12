@@ -107,6 +107,11 @@ func runDiagnostics(store *config.Store, dir string) {
 	} else {
 		p("GPU: indisponível")
 	}
+	if placas := sysinfo.GPUAdapters(); len(placas) > 0 {
+		p("Placa(s) de vídeo: %s", strings.Join(placas, ", "))
+		p("  (NVIDIA lê pela nvml.dll, AMD pela atiadlxx.dll; vídeo Intel integrado")
+		p("   não publica temperatura em nenhuma biblioteca pública)")
+	}
 	p("")
 	drv := sysinfo.TempDriverStatus()
 	p("Driver PawnIO: %s", simNao(drv.Installed, "instalado "+drv.Version, "não instalado"))

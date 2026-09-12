@@ -2,6 +2,8 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -44,12 +46,13 @@ const (
 )
 
 type Config struct {
-	Devices []DeviceConfig `json:"dispositivos"`
-	Screens ScreensConfig `json:"telas"`
-	Theme   ThemeConfig   `json:"tema"`
-	Steam   SteamConfig   `json:"steam"`
-	General GeneralConfig `json:"geral"`
-	Mancer  MancerConfig  `json:"mancer"`
+	Devices  []DeviceConfig `json:"dispositivos"`
+	Screens  ScreensConfig  `json:"telas"`
+	Theme    ThemeConfig    `json:"tema"`
+	Steam    SteamConfig    `json:"steam"`
+	General  GeneralConfig  `json:"geral"`
+	Mancer   MancerConfig   `json:"mancer"`
+	GameData GameDataConfig `json:"dados_de_jogo"`
 }
 
 // DeviceConfig é uma tela USB configurada. O ID é interno e estável (não muda
@@ -151,6 +154,15 @@ type MancerConfig struct {
 	Enabled bool `json:"ativado"`
 }
 
+// GameDataConfig liga/desliga o acompanhamento ao vivo de partidas (CS2,
+// Dota 2 via Game State Integration da Valve, e League of Legends via a API
+// local da Riot). O Token é gerado uma vez sozinho e mantido estável entre
+// reinícios do Bifrost, pra não precisar reiniciar o CS2/Dota2 toda hora.
+type GameDataConfig struct {
+	Enabled bool   `json:"ativado"`
+	Token   string `json:"token"`
+}
+
 // Default devolve a configuração de fábrica.
 func Default() Config {
 	return Config{
@@ -166,9 +178,10 @@ func Default() Config {
 			AccentMusic: "#2dd4bf", AccentGame: "#66c0f4", AccentSystem: "#f59e0b", AccentClock: "#a5b4fc",
 			Background: "gradiente", BgColor: "#101116",
 		},
-		Steam:   SteamConfig{Enabled: true, Source: "local", StatusSeconds: 15, LibrarySeconds: 300},
-		General: GeneralConfig{Autostart: false, OpenPanel: true, RefreshMillis: 1000, WebPort: 47017, Language: "auto", AutoUpdate: true},
-		Mancer:  MancerConfig{Enabled: true},
+		Steam:    SteamConfig{Enabled: true, Source: "local", StatusSeconds: 15, LibrarySeconds: 300},
+		General:  GeneralConfig{Autostart: false, OpenPanel: true, RefreshMillis: 1000, WebPort: 47017, Language: "auto", AutoUpdate: true},
+		Mancer:   MancerConfig{Enabled: true},
+		GameData: GameDataConfig{Enabled: true},
 	}
 }
 
@@ -282,6 +295,20 @@ func (c *Config) Normalize() {
 	if c.General.Language != "auto" && !i18n.IsSupported(i18n.Lang(c.General.Language)) {
 		c.General.Language = "auto"
 	}
+
+	if strings.TrimSpace(c.GameData.Token) == "" {
+		c.GameData.Token = randomToken()
+	}
+}
+
+// randomToken gera um token aleatório (usado como segredo do GSI, pra só o
+// CS2/Dota2 desta máquina conseguirem mandar dados pro Bifrost).
+func randomToken() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "bifrost" // extremamente improvável, mas não trava a config por isso
+	}
+	return hex.EncodeToString(b)
 }
 
 // ResolvedLanguage devolve o idioma efetivo: o escolhido, ou o do Windows se for "auto".

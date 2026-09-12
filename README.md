@@ -31,6 +31,11 @@ Runs on **Windows**, **Linux** and **macOS** — see [Platforms](#platforms) for
   in Windows' media controls (Spotify, YouTube in the browser, Deezer, Media Player…). No login required.
 - **Game (Steam)**: name, cover art, total playtime, last 2 weeks and current session time,
   read directly from the Steam install on your PC, no API key needed.
+- **Live match tracking** (optional): while you're in an active match, the Game screen shows
+  live stats instead of the usual Steam summary — CS2/CS:GO and Dota 2 via Valve's official
+  **Game State Integration**, and League of Legends via Riot's local **Live Client Data API**.
+  With no live match, it falls back to your Steam totals plus real-time **FPS** (read from
+  RivaTuner Statistics Server, if installed). See [Live match tracking](#live-match-tracking) below.
 - **System**: CPU, GPU, memory, disk, network, and how long the PC has been on.
 - **Clock**: time and date, in 12- or 24-hour format, with or without seconds.
 - **Mancer Mystic G1 watercooler display** (optional): sends the live CPU temperature to the small 2-digit HID
@@ -136,6 +141,37 @@ If you play on **another PC**, switch the source to **Steam Web API** in the Ste
 3. In Steam's privacy settings, set **Game details** to **Public**.
 4. Click **Test**.
 
+### Live match tracking
+
+<p align="center"><img src="docs/preview_jogo_ao_vivo.png" width="200" alt="Game screen showing a live CS2 match"></p>
+<p align="center"><sub>While a match is on, the Game screen swaps the usual Steam summary for live status: map/round, score, K/D/A, health, armor, money, bomb state, and CPU/GPU/FPS.</sub></p>
+
+The **Steam** tab has a **Live matches** toggle (on by default). While it's on:
+
+- **CS2 / CS:GO and Dota 2**: Bifrost writes a small `.cfg` file into the game's own `cfg` folder
+  (auto-detected from your Steam libraries), using Valve's official **Game State Integration**
+  protocol. The game then POSTs a JSON update to a local port (`127.0.0.1:47018`) on every kill,
+  round change, bomb plant, etc. — nothing is injected into the game, and no memory is read.
+  If the game was already open when you turned this on, restart it once so it picks up the new
+  `.cfg` file. Docs: [CS2/CS:GO GSI](https://developer.valvesoftware.com/wiki/Counter-Strike:_Global_Offensive_Game_State_Integration),
+  [Dota 2 GSI](https://developer.valvesoftware.com/wiki/Dota_2_Workshop_Tools/Game_State_Integration).
+  **Dota 2 also needs `-gamestateintegration` added to its Steam launch options**
+  (Library → right-click Dota 2 → Properties → Launch Options) — without it, Dota 2 won't read
+  the `.cfg` file at all, no matter how many times it's restarted. CS2 doesn't need this.
+- **League of Legends**: read from Riot's own local **Live Client Data API**
+  (`https://127.0.0.1:2999/liveclientdata/allgamedata`), which the League client exposes by itself
+  while a match is in progress — no setup needed.
+- **FPS**: while no live match is detected, the Game screen also shows real-time FPS if
+  [RivaTuner Statistics Server](https://www.guru3d.com/download/rtss-rivatuner-statistics-server-download/)
+  is installed and running (read from its shared memory, the same source every FPS overlay uses).
+
+While a match is live, the Game screen replaces the Steam summary with the match's actual status:
+map/hero, round or game time, score, K/D/A, and per-game extras (health/armor/money and bomb state
+for CS2; gold/XP per minute and CS for Dota 2/LoL) — plus CPU, GPU and FPS at the bottom, so you
+can keep an eye on performance without tabbing out.
+
+When there's no live match, the Game screen just shows your Steam totals as before.
+
 ### Mancer Mystic G1 display
 
 If you have a **Mancer Mystic G1** water block, its small 2-digit HID display (normally just showing "88")
@@ -189,10 +225,13 @@ This writes `dist/bifrost-windows-amd64.exe`, `dist/bifrost-linux-{amd64,arm64}`
 ```
 cmd/bifrost/        program entry point, tray icon, panel window, diagnostics
 internal/app/       decides the current screen, keeps the connection, sends the frames
+internal/gsi/       Game State Integration server (CS2/CS:GO and Dota 2 live match data)
 internal/i18n/      translation catalog and OS UI-language detection
 internal/lcd/       screen protocol (revision A) and the serial port (Windows/Linux/macOS)
+internal/lolapi/    League of Legends live match data (Riot's local Live Client Data API)
 internal/render/    screen drawing (portrait and landscape)
 internal/media/     music playing — Windows Media Control (WinRT), MPRIS/D-Bus on Linux, AppleScript (Music.app/Spotify) on macOS
+internal/rtss/      real-time FPS, read from RivaTuner Statistics Server's shared memory
 internal/steam/     Steam: local reading (Windows registry + .vdf files) and Web API (all platforms)
 internal/sysinfo/   CPU, GPU, memory, network and disk per platform
 internal/web/       control panel (local server + UI)

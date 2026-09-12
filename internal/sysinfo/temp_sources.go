@@ -16,6 +16,8 @@ const (
 	SourceAfterburner = "MSI Afterburner"
 	SourceAIDA64      = "AIDA64"
 	SourceNvidiaSMI   = "nvidia-smi"
+	SourceNVML        = "NVIDIA (nvml.dll)"
+	SourceADL         = "AMD (atiadlxx.dll)"
 	SourceProc        = "/sys (Linux)"
 	SourceSMC         = "SMC (macOS)"
 )
@@ -300,4 +302,19 @@ const (
 	hintAIDA64      = "no AIDA64, ligue Preferences > External Applications > Shared Memory"
 	hintACPI        = "depende da placa-mãe expor zona térmica ACPI; a maioria dos desktops não expõe"
 	hintPawnIOAgent = "ative a leitura de temperatura no painel: o Bifrost instala o driver PawnIO (assinado, open-source) e deixa um agente publicando a leitura"
+	hintNVML        = "vem junto com o driver NVIDIA (nvml.dll); só responde em máquina com placa NVIDIA"
+	hintADL         = "vem junto com o driver AMD Adrenalin (atiadlxx.dll); só responde em máquina com placa AMD"
+	hintNvidiaSMI   = "reserva para placas NVIDIA quando a nvml.dll não está no caminho padrão"
 )
+
+// parseNvidiaSMI lê a saída de `nvidia-smi --query-gpu=temperature.gpu
+// --format=csv,noheader,nounits`: um número por linha, uma linha por GPU.
+// Placas sem sensor respondem "N/A" — nesse caso seguimos para a próxima linha.
+func parseNvidiaSMI(out string) (float64, bool) {
+	for _, linha := range strings.Split(out, "\n") {
+		if v, ok := parseTempNumber(strings.TrimSpace(linha)); ok && validTemp(v) {
+			return v, true
+		}
+	}
+	return 0, false
+}
