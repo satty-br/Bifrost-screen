@@ -49,7 +49,7 @@ jobs:
 
       - name: Renomeia o binário do Windows (convenção usada pelo autoupdate)
         shell: pwsh
-        run: Rename-Item dist/bifrost.exe dist/bifrost-windows-amd64.exe
+        run: Move-Item dist/bifrost.exe dist/bifrost-windows-amd64.exe
 
       - name: Gera checksums.txt (SHA-256, conferido pelo autoupdate)
         shell: pwsh
