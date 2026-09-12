@@ -28,6 +28,12 @@ const (
 // ErrNotFound é devolvido quando nenhum dispositivo com o VID/PID esperado é encontrado.
 var ErrNotFound = errors.New("mostrador Mancer não encontrado")
 
+// errTempUnavailable é usado quando temp() devolve um valor negativo (convenção
+// do pacote sysinfo pra "sensor de temperatura indisponível nesse PC"). Nesse
+// caso não faz sentido mandar 0°C pro mostrador — melhor deixar ele voltar a
+// mostrar "88" sozinho (por falta de atualização) do que exibir um valor errado.
+var errTempUnavailable = errors.New("temperatura da CPU indisponível neste PC")
+
 // clampTemp limita a temperatura à faixa que o mostrador consegue exibir (0-99°C).
 func clampTemp(celsius float64) byte {
 	v := int(celsius + 0.5) // arredonda pro inteiro mais próximo
@@ -86,7 +92,14 @@ func (m *Monitor) Start(ctx context.Context, interval time.Duration, temp func()
 				}
 				dev = d
 			}
-			if err := dev.Write(clampTemp(temp())); err != nil {
+			t := temp()
+			if t < 0 {
+				// Sensor indisponível: não manda nada nesse ciclo, o mostrador
+				// volta a exibir "88" sozinho por falta de atualização.
+				m.setStatus(true, errTempUnavailable.Error())
+				continue
+			}
+			if err := dev.Write(clampTemp(t)); err != nil {
 				dev.Close()
 				dev = nil
 				m.setStatus(false, err.Error())

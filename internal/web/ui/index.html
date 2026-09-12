@@ -957,12 +957,12 @@ function renderState() {
 
   if (s.mancer) {
     const ms = $("#mancerStatus");
-    ms.textContent = !s.mancer.ativado ? t("mancer.off") : s.mancer.conectado ? t("mancer.connected") : (s.mancer.erro || t("mancer.disconnected"));
+    ms.textContent = !s.mancer.ativado ? t("mancer.off") : s.mancer.erro ? s.mancer.erro : s.mancer.conectado ? t("mancer.connected") : t("mancer.disconnected");
     $("#mancerTemp").textContent = s.sistema.cpu_temperatura >= 0 ? Math.round(s.sistema.cpu_temperatura) + "°C" : "—";
     $("#mancerChip").hidden = !s.mancer.ativado;
     if (s.mancer.ativado) {
-      $("#mancerDot").className = "dot " + (s.mancer.conectado ? "ok" : "warn");
-      $("#mancerChipText").textContent = t("mancer.chip") + ": " + (s.mancer.conectado ? t("mancer.connected") : t("mancer.disconnected"));
+      $("#mancerDot").className = "dot " + (s.mancer.conectado && !s.mancer.erro ? "ok" : "warn");
+      $("#mancerChipText").textContent = t("mancer.chip") + ": " + (s.mancer.conectado && !s.mancer.erro ? t("mancer.connected") : t("mancer.disconnected"));
     }
   }
 
