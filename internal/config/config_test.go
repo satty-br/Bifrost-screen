@@ -113,7 +113,7 @@ func TestNormalizeClampsAndFixes(t *testing.T) {
 	}
 	c.Normalize()
 
-	wantOrder := []Screen{ScreenClock, ScreenGame, ScreenMusic, ScreenSystem}
+	wantOrder := []Screen{ScreenClock, ScreenGame, ScreenMusic, ScreenSystem, ScreenCustom}
 	if len(c.Screens.Order) != len(wantOrder) {
 		t.Fatalf("ordem deveria ter %d telas (sem duplicatas/desconhecidas + completada), veio %v", len(wantOrder), c.Screens.Order)
 	}
@@ -169,6 +169,49 @@ func TestEnabled(t *testing.T) {
 	}
 	if c.Enabled(Screen("desconhecida")) {
 		t.Error("tela desconhecida nunca deveria estar ligada")
+	}
+	if c.Enabled(ScreenCustom) {
+		t.Error("personalizada não deveria estar ligada sem nenhum widget")
+	}
+	c.Screens.Custom.Enabled = true
+	c.Screens.Custom.Widgets = []CustomWidget{{Type: "relogio", X: 0, Y: 0, W: 0.5, H: 0.5}}
+	if !c.Enabled(ScreenCustom) {
+		t.Error("personalizada deveria estar ligada com ao menos um widget")
+	}
+}
+
+func TestNormalizeCustomWidgets(t *testing.T) {
+	c := Default()
+	c.Screens.Custom.Widgets = []CustomWidget{
+		{Type: "relogio", X: 0.5, Y: 0.5, W: 0.8, H: 0.8}, // W/H estourariam os limites da tela
+		{Type: "widget-que-nao-existe", X: 0, Y: 0, W: 0.3, H: 0.3},
+		{Type: "cpu_medidor", X: -1, Y: -1, W: 2, H: 2},
+		{Type: "gpu_medidor", X: 0, Y: 0, W: 0, H: 0.3}, // largura zero: some pro mínimo (0.05)
+	}
+	c.Normalize()
+
+	if len(c.Screens.Custom.Widgets) != 3 {
+		t.Fatalf("deveria sobrar 3 widgets válidos (o tipo desconhecido descartado), veio %d: %+v", len(c.Screens.Custom.Widgets), c.Screens.Custom.Widgets)
+	}
+	first := c.Screens.Custom.Widgets[0]
+	if first.X+first.W > 1.0001 || first.Y+first.H > 1.0001 {
+		t.Errorf("widget não deveria passar dos limites da tela: %+v", first)
+	}
+	second := c.Screens.Custom.Widgets[1]
+	if second.X != 0 || second.Y != 0 || second.W != 1 || second.H != 1 {
+		t.Errorf("coordenadas fora de 0..1 deveriam ser fixadas nos limites, veio %+v", second)
+	}
+	third := c.Screens.Custom.Widgets[2]
+	if third.W < 0.05 {
+		t.Errorf("largura zero deveria virar o mínimo (0.05), veio %+v", third)
+	}
+
+	for i := 0; i < maxCustomWidgets+5; i++ {
+		c.Screens.Custom.Widgets = append(c.Screens.Custom.Widgets, CustomWidget{Type: "relogio", X: 0, Y: 0, W: 0.1, H: 0.1})
+	}
+	c.Normalize()
+	if len(c.Screens.Custom.Widgets) != maxCustomWidgets {
+		t.Errorf("deveria limitar a %d widgets, veio %d", maxCustomWidgets, len(c.Screens.Custom.Widgets))
 	}
 }
 

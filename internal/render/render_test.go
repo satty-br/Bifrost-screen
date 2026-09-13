@@ -81,3 +81,25 @@ func TestRenderAll(t *testing.T) {
 		f.Close()
 	}
 }
+
+// TestRenderCustomWidgets exercita cada tipo de widget da tela personalizada
+// (um por vez, e todos juntos numa grade), em caixas bem pequenas e bem
+// grandes, pra pegar qualquer pânico de divisão por zero/medida negativa.
+func TestRenderCustomWidgets(t *testing.T) {
+	in := sampleInput()
+	for _, kind := range config.CustomWidgetKinds {
+		in.Cfg.Screens.Custom.Widgets = []config.CustomWidget{{Type: kind, X: 0.1, Y: 0.1, W: 0.3, H: 0.15}}
+		for _, dims := range [][2]int{{320, 480}, {480, 320}} {
+			img := Draw(config.ScreenCustom, dims[0], dims[1], in)
+			if img == nil {
+				t.Fatalf("widget %s: imagem nula", kind)
+			}
+		}
+	}
+	var grid []config.CustomWidget
+	for i, kind := range config.CustomWidgetKinds {
+		grid = append(grid, config.CustomWidget{Type: kind, X: float64(i%4) * 0.25, Y: float64(i/4) * 0.25, W: 0.25, H: 0.25})
+	}
+	in.Cfg.Screens.Custom.Widgets = grid
+	Draw(config.ScreenCustom, 320, 480, in)
+}

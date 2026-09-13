@@ -163,6 +163,21 @@ select.inp{padding-right:8px}
 .o-l .shape{width:32px;height:22px;margin:5px 0}.o-l .shape::after{top:3px;right:3px}
 .o-lr .shape{width:32px;height:22px;margin:5px 0}.o-lr .shape::after{bottom:3px;left:3px}
 
+/* tela personalizada (editor arrasta-e-solta) */
+.ceditor{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.cpalette{display:flex;flex-direction:column;gap:6px;width:180px;flex:none}
+.cchip{display:flex;align-items:center;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);cursor:grab;font-size:12px;font-weight:600;user-select:none}
+.cchip:active{cursor:grabbing}
+.ccanvas{position:relative;width:240px;height:360px;border-radius:18px;border:1px solid var(--line2);background:#101116;overflow:hidden;flex:none}
+.cwidget{position:absolute;border-radius:8px;border:1px solid color-mix(in srgb,var(--accent) 55%,transparent);background:color-mix(in srgb,var(--accent) 20%,transparent);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;color:#fff;text-align:center;cursor:move;touch-action:none;overflow:hidden;padding:2px;line-height:1.2}
+.cwidget.selected{border-width:2px;box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 50%,transparent)}
+.cwidget .cdel{position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;line-height:1}
+.cwidget .cresize{position:absolute;right:0;bottom:0;width:14px;height:14px;cursor:nwse-resize;background:color-mix(in srgb,var(--accent) 75%,transparent);border-top-left-radius:6px}
+.cempty{color:var(--faint);font-size:12px;padding:10px}
+.cprops-box{flex:1;min-width:220px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:14px}
+.cprops-grid{display:grid;grid-template-columns:1fr;gap:10px}
+.cprops-grid input[type=color]{width:100%;height:36px;border:1px solid var(--line2);border-radius:8px;padding:0;background:none;cursor:pointer}
+
 /* alertas */
 .alert{display:flex;gap:14px;padding:14px 16px;border-radius:var(--r);border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);background:color-mix(in srgb,var(--warn) 10%,var(--panel))}
 .alert.bad{border-color:color-mix(in srgb,var(--bad) 45%,transparent);background:color-mix(in srgb,var(--bad) 9%,var(--panel))}
@@ -261,6 +276,21 @@ select.inp{padding-right:8px}
         <div class="hd"><h2 data-i18n="screens.what_to_show">O que exibir</h2><span class="spacer"></span><span class="muted" style="font-size:12px" id="orderHint">A ordem define a prioridade para todos os dispositivos</span></div>
         <div class="bd"><div class="screens" id="screens"></div></div>
       </section>
+
+      <section class="card">
+        <div class="hd"><h2 data-i18n="custom.editor.title">Tela personalizada</h2></div>
+        <div class="bd">
+          <p class="hint" style="margin:0 0 14px" data-i18n="custom.editor.hint">Arraste um bloco da lista pra tela abaixo. Depois, arraste o bloco pra mover, ou puxe o cantinho pra redimensionar.</p>
+          <div class="ceditor">
+            <div class="cpalette" id="cpalette"></div>
+            <div class="ccanvas" id="ccanvas"></div>
+            <div class="cprops-box">
+              <div style="font-weight:650;margin-bottom:10px" data-i18n="custom.props.title">Propriedades do bloco</div>
+              <div id="cprops"></div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
 
     <!-- APARÊNCIA -->
@@ -273,6 +303,7 @@ select.inp{padding-right:8px}
             <label class="color"><input type="color" data-path="tema.cor_jogo"><div><div style="font-weight:600" data-i18n="screen.game.name">Jogo</div><code data-code="tema.cor_jogo"></code></div></label>
             <label class="color"><input type="color" data-path="tema.cor_sistema"><div><div style="font-weight:600" data-i18n="screen.system.name">Sistema</div><code data-code="tema.cor_sistema"></code></div></label>
             <label class="color"><input type="color" data-path="tema.cor_relogio"><div><div style="font-weight:600" data-i18n="screen.clock.name">Relógio</div><code data-code="tema.cor_relogio"></code></div></label>
+            <label class="color"><input type="color" data-path="tema.cor_personalizada"><div><div style="font-weight:600" data-i18n="screen.custom.name">Personalizada</div><code data-code="tema.cor_personalizada"></code></div></label>
           </div>
           <div>
             <div style="font-size:13px;font-weight:600;margin-bottom:8px" data-i18n="appearance.presets">Combinações prontas</div>
@@ -652,6 +683,42 @@ const I18N = {
 "screen.system.sub":{pt:"CPU, GPU, memória, disco e rede",en:"CPU, GPU, memory, disk, and network",es:"CPU, GPU, memoria, disco y red",ja:"CPU、GPU、メモリ、ディスク、ネットワーク",zh:"CPU、GPU、内存、磁盘和网络"},
 "screen.clock.name":{pt:"Relógio",en:"Clock",es:"Reloj",ja:"時計",zh:"时钟"},
 "screen.clock.sub":{pt:"Hora e data",en:"Time and date",es:"Hora y fecha",ja:"時刻と日付",zh:"时间和日期"},
+"screen.custom.name":{pt:"Personalizada",en:"Custom",es:"Personalizada",ja:"カスタム",zh:"自定义"},
+"screen.custom.sub":{pt:"Monte a sua própria tela com os blocos abaixo",en:"Build your own screen with the blocks below",es:"Arma tu propia pantalla con los bloques de abajo",ja:"下のブロックで自分だけの画面を作成",zh:"用下面的模块搭建你自己的屏幕"},
+"custom.editor.title":{pt:"Tela personalizada",en:"Custom screen",es:"Pantalla personalizada",ja:"カスタム画面",zh:"自定义屏幕"},
+"custom.editor.hint":{pt:"Arraste um bloco da lista pra tela abaixo. Depois, arraste o bloco pra mover, ou puxe o cantinho pra redimensionar.",en:"Drag a block from the list onto the screen below. Then drag the block to move it, or pull its corner to resize.",es:"Arrastra un bloque de la lista a la pantalla de abajo. Luego arrastra el bloque para moverlo, o tira de la esquina para redimensionar.",ja:"リストのブロックを下の画面にドラッグしてください。ブロックをドラッグして移動、角を引っ張ってサイズ変更できます。",zh:"把列表中的模块拖到下面的屏幕上。之后可以拖动模块来移动,拖动角落来调整大小。"},
+"custom.editor.remove_aria":{pt:"Remover bloco",en:"Remove block",es:"Quitar bloque",ja:"ブロックを削除",zh:"移除模块"},
+"custom.editor.empty":{pt:"Nenhum bloco ainda — arraste um da lista à esquerda",en:"No blocks yet — drag one from the list on the left",es:"Aún no hay bloques — arrastra uno de la lista de la izquierda",ja:"まだブロックがありません — 左のリストからドラッグしてください",zh:"还没有模块 — 从左侧列表中拖一个过来"},
+"custom.widget.relogio":{pt:"Relógio",en:"Clock",es:"Reloj",ja:"時計",zh:"时钟"},
+"custom.widget.data":{pt:"Data",en:"Date",es:"Fecha",ja:"日付",zh:"日期"},
+"custom.widget.texto":{pt:"Texto",en:"Text",es:"Texto",ja:"テキスト",zh:"文本"},
+"custom.widget.cpu_medidor":{pt:"Medidor de CPU",en:"CPU gauge",es:"Medidor de CPU",ja:"CPU ゲージ",zh:"CPU 仪表"},
+"custom.widget.gpu_medidor":{pt:"Medidor de GPU",en:"GPU gauge",es:"Medidor de GPU",ja:"GPU ゲージ",zh:"GPU 仪表"},
+"custom.widget.cpu_temperatura":{pt:"Temperatura da CPU",en:"CPU temperature",es:"Temperatura de la CPU",ja:"CPU 温度",zh:"CPU 温度"},
+"custom.widget.gpu_temperatura":{pt:"Temperatura da GPU",en:"GPU temperature",es:"Temperatura de la GPU",ja:"GPU 温度",zh:"GPU 温度"},
+"custom.widget.ram_barra":{pt:"Uso de RAM",en:"RAM usage",es:"Uso de RAM",ja:"RAM 使用率",zh:"内存使用率"},
+"custom.widget.disco_barra":{pt:"Uso de disco",en:"Disk usage",es:"Uso de disco",ja:"ディスク使用率",zh:"磁盘使用率"},
+"custom.widget.rede":{pt:"Rede (down/up)",en:"Network (down/up)",es:"Red (bajada/subida)",ja:"ネットワーク(down/up)",zh:"网络(下载/上传)"},
+"custom.widget.tempo_ligado":{pt:"Tempo ligado",en:"Uptime",es:"Tiempo encendido",ja:"起動時間",zh:"开机时长"},
+"custom.widget.musica_titulo":{pt:"Música: título/artista",en:"Music: title/artist",es:"Música: título/artista",ja:"音楽:タイトル/アーティスト",zh:"音乐:标题/艺术家"},
+"custom.widget.musica_capa":{pt:"Música: capa",en:"Music: cover art",es:"Música: carátula",ja:"音楽:カバー画像",zh:"音乐:封面"},
+"custom.widget.musica_progresso":{pt:"Música: progresso",en:"Music: progress",es:"Música: progreso",ja:"音楽:進捗",zh:"音乐:进度"},
+"custom.widget.jogo_nome":{pt:"Jogo: nome",en:"Game: name",es:"Juego: nombre",ja:"ゲーム:名前",zh:"游戏:名称"},
+"custom.widget.jogo_capa":{pt:"Jogo: capa",en:"Game: cover art",es:"Juego: carátula",ja:"ゲーム:カバー画像",zh:"游戏:封面"},
+"custom.widget.jogo_tempo":{pt:"Jogo: tempo jogado",en:"Game: playtime",es:"Juego: tiempo jugado",ja:"ゲーム:プレイ時間",zh:"游戏:游戏时长"},
+"custom.props.title":{pt:"Propriedades do bloco",en:"Block properties",es:"Propiedades del bloque",ja:"ブロックのプロパティ",zh:"模块属性"},
+"custom.props.none":{pt:"Clique num bloco na tela pra editar as propriedades dele",en:"Click a block on the screen to edit its properties",es:"Haz clic en un bloque de la pantalla para editar sus propiedades",ja:"画面上のブロックをクリックしてプロパティを編集してください",zh:"点击屏幕上的模块以编辑其属性"},
+"custom.props.remove":{pt:"Remover bloco",en:"Remove block",es:"Quitar bloque",ja:"ブロックを削除",zh:"删除模块"},
+"custom.props.text":{pt:"Texto",en:"Text",es:"Texto",ja:"テキスト",zh:"文本"},
+"custom.props.text_placeholder":{pt:"Digite o texto…",en:"Type your text…",es:"Escribe el texto…",ja:"テキストを入力…",zh:"输入文本…"},
+"custom.props.style":{pt:"Tipo de gráfico",en:"Chart type",es:"Tipo de gráfico",ja:"グラフの種類",zh:"图表类型"},
+"custom.props.style_medidor":{pt:"Medidor (arco)",en:"Gauge (arc)",es:"Medidor (arco)",ja:"ゲージ(弧)",zh:"仪表(弧形)"},
+"custom.props.style_barra":{pt:"Barra",en:"Bar",es:"Barra",ja:"バー",zh:"条形图"},
+"custom.props.style_numero":{pt:"Número",en:"Number",es:"Número",ja:"数値",zh:"数字"},
+"custom.props.color":{pt:"Cor do texto",en:"Text color",es:"Color del texto",ja:"テキストの色",zh:"文字颜色"},
+"custom.props.bold":{pt:"Negrito",en:"Bold",es:"Negrita",ja:"太字",zh:"粗体"},
+"custom.props.bg":{pt:"Fundo",en:"Background",es:"Fondo",ja:"背景",zh:"背景"},
+"custom.props.bgcolor":{pt:"Cor do fundo",en:"Background color",es:"Color de fondo",ja:"背景色",zh:"背景颜色"},
 "opt.cover":{pt:"Capa",en:"Cover art",es:"Carátula",ja:"カバー画像",zh:"封面"},
 "opt.album":{pt:"Álbum",en:"Album",es:"Álbum",ja:"アルバム",zh:"专辑"},
 "opt.progress_bar":{pt:"Barra de progresso",en:"Progress bar",es:"Barra de progreso",ja:"進捗バー",zh:"进度条"},
@@ -710,6 +777,8 @@ const SCREENS = {
             opts:[["mostrar_cpu","opt.cpu"],["mostrar_gpu","opt.gpu"],["mostrar_ram","opt.memory"],["mostrar_disco","opt.disk"],["mostrar_rede","opt.network"],["mostrar_tempo_ligado","opt.uptime"]]},
   relogio: {nameKey:"screen.clock.name", icon:"◷",  subKey:"screen.clock.sub", color:"cor_relogio",
             opts:[["formato_24h","opt.24h"],["mostrar_segundos","opt.seconds"],["mostrar_data","opt.date"]]},
+  personalizada: {nameKey:"screen.custom.name", icon:"▦", subKey:"screen.custom.sub", color:"cor_personalizada",
+            opts:[]},
 };
 function screenName(key) { return SCREENS[key] ? t(SCREENS[key].nameKey) : "—"; }
 function screenSub(key) { return SCREENS[key] ? t(SCREENS[key].subKey) : ""; }
@@ -717,11 +786,11 @@ const ICON_PAUSE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h3.
 const ICON_PLAY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2v12l11-6z"/></svg>';
 const MODE_HINT = { automatico: "mode.hint_auto", rotacao: "mode.hint_rotate", fixo: "mode.hint_fixed" };
 const PRESETS = [
-  {n:"Bifrost", c:["#2dd4bf","#66c0f4","#f59e0b","#a5b4fc"]},
-  {n:"Neon",    c:["#22d3ee","#e879f9","#a3e635","#f472b6"]},
-  {n:"Aurora",  c:["#34d399","#60a5fa","#c084fc","#5eead4"]},
-  {n:"Brasa",   c:["#fb923c","#f87171","#fbbf24","#fdba74"]},
-  {n:"Mono",    c:["#e5e7eb","#d1d5db","#9ca3af","#f3f4f6"]},
+  {n:"Bifrost", c:["#2dd4bf","#66c0f4","#f59e0b","#a5b4fc","#f472b6"]},
+  {n:"Neon",    c:["#22d3ee","#e879f9","#a3e635","#f472b6","#facc15"]},
+  {n:"Aurora",  c:["#34d399","#60a5fa","#c084fc","#5eead4","#fb7185"]},
+  {n:"Brasa",   c:["#fb923c","#f87171","#fbbf24","#fdba74","#f43f5e"]},
+  {n:"Mono",    c:["#e5e7eb","#d1d5db","#9ca3af","#f3f4f6","#6b7280"]},
 ];
 
 let cfg = null, state = null, saveTimer = null, lastFrame = -1, portsCache = [], selectedDeviceIndex = 0;
@@ -793,6 +862,7 @@ function renderConfig() {
   $("#noDevicesToAdd").hidden = !cfg.mancer.ativado;
   renderScreens();
   renderDevices();
+  renderCustomEditor();
 }
 
 // ---------- lista de telas
@@ -890,6 +960,210 @@ function updateBadges() {
     const [cls, txt] = badgeFor(row.dataset.key);
     const b = row.querySelector("[data-badge]");
     if (b.textContent !== txt) { b.textContent = txt; b.className = cls; }
+  });
+}
+
+// ---------- editor da tela personalizada (arrasta-e-solta)
+const CUSTOM_WIDGET_KINDS = [
+  "relogio", "data", "texto",
+  "cpu_medidor", "gpu_medidor", "cpu_temperatura", "gpu_temperatura",
+  "ram_barra", "disco_barra", "rede", "tempo_ligado",
+  "musica_titulo", "musica_capa", "musica_progresso",
+  "jogo_nome", "jogo_capa", "jogo_tempo",
+];
+// tipos que aceitam o seletor "tipo de gráfico" (medidor/barra/número)
+const CUSTOM_STYLE_KINDS = ["cpu_medidor", "gpu_medidor"];
+function widgetLabel(kind) { return t("custom.widget." + kind); }
+function clamp01(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+let selectedWidgetIndex = -1;
+
+function renderCustomEditor() {
+  if (!cfg) return;
+  const pal = $("#cpalette");
+  if (!pal.childElementCount) {
+    CUSTOM_WIDGET_KINDS.forEach(kind => {
+      const chip = document.createElement("div");
+      chip.className = "cchip"; chip.draggable = true; chip.dataset.kind = kind;
+      pal.appendChild(chip);
+      chip.addEventListener("dragstart", e => e.dataTransfer.setData("text/plain", kind));
+    });
+  }
+  pal.querySelectorAll(".cchip").forEach(c => c.textContent = widgetLabel(c.dataset.kind));
+
+  const canvas = $("#ccanvas");
+  const widgets = cfg.telas.personalizada.widgets || (cfg.telas.personalizada.widgets = []);
+  if (selectedWidgetIndex >= widgets.length) selectedWidgetIndex = -1;
+  canvas.innerHTML = "";
+  if (!widgets.length) {
+    const empty = document.createElement("div"); empty.className = "cempty"; empty.textContent = t("custom.editor.empty");
+    canvas.appendChild(empty);
+  }
+  widgets.forEach((wd, i) => {
+    const el = document.createElement("div");
+    el.className = "cwidget" + (i === selectedWidgetIndex ? " selected" : "");
+    el.style.left = (wd.x * 100) + "%"; el.style.top = (wd.y * 100) + "%";
+    el.style.width = (wd.w * 100) + "%"; el.style.height = (wd.h * 100) + "%";
+    if (wd.cor) el.style.borderColor = wd.cor;
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = wd.tipo === "texto" && wd.texto ? wd.texto : widgetLabel(wd.tipo);
+    const del = document.createElement("span"); del.className = "cdel"; del.textContent = "×";
+    del.setAttribute("aria-label", t("custom.editor.remove_aria"));
+    del.onclick = e => {
+      e.stopPropagation(); widgets.splice(i, 1);
+      if (selectedWidgetIndex === i) selectedWidgetIndex = -1;
+      renderCustomEditor(); scheduleSave(true);
+    };
+    const rs = document.createElement("span"); rs.className = "cresize";
+    el.append(labelSpan, del, rs);
+    bindCustomWidgetDrag(el, wd, rs, i);
+    canvas.appendChild(el);
+  });
+  renderWidgetProps();
+}
+
+function selectWidget(i) { selectedWidgetIndex = i; renderCustomEditor(); }
+
+// painel de propriedades do bloco selecionado: texto livre, tipo de gráfico
+// (só nos medidores), cor do texto, negrito, fundo e cor do fundo.
+function renderWidgetProps() {
+  const box = $("#cprops");
+  const widgets = (cfg && cfg.telas.personalizada.widgets) || [];
+  const wd = widgets[selectedWidgetIndex];
+  box.innerHTML = "";
+  if (!wd) {
+    const p = document.createElement("p"); p.className = "hint"; p.style.margin = "0";
+    p.textContent = t("custom.props.none");
+    box.appendChild(p);
+    return;
+  }
+  const title = document.createElement("div"); title.style.cssText = "font-weight:650;margin-bottom:8px";
+  title.textContent = widgetLabel(wd.tipo);
+  box.appendChild(title);
+
+  const grid = document.createElement("div"); grid.className = "cprops-grid";
+
+  if (wd.tipo === "texto") {
+    const f = document.createElement("div"); f.className = "field";
+    const l = document.createElement("label"); l.textContent = t("custom.props.text");
+    const inp = document.createElement("input"); inp.className = "inp"; inp.maxLength = 48;
+    inp.value = wd.texto || ""; inp.placeholder = t("custom.props.text_placeholder");
+    inp.oninput = () => { wd.texto = inp.value; updateCanvasWidget(selectedWidgetIndex); scheduleSave(false); };
+    f.append(l, inp); grid.appendChild(f);
+  }
+  if (CUSTOM_STYLE_KINDS.includes(wd.tipo)) {
+    const f = document.createElement("div"); f.className = "field";
+    const l = document.createElement("label"); l.textContent = t("custom.props.style");
+    const sel = document.createElement("select"); sel.className = "inp";
+    [["medidor", "custom.props.style_medidor"], ["barra", "custom.props.style_barra"], ["numero", "custom.props.style_numero"]]
+      .forEach(([v, k]) => sel.appendChild(new Option(t(k), v, false, (wd.estilo || "medidor") === v)));
+    sel.onchange = () => { wd.estilo = sel.value; scheduleSave(true); };
+    f.append(l, sel); grid.appendChild(f);
+  }
+  const colorField = document.createElement("div"); colorField.className = "field";
+  const colorLabel = document.createElement("label"); colorLabel.textContent = t("custom.props.color");
+  const colorInp = document.createElement("input"); colorInp.type = "color"; colorInp.value = wd.cor || "#ffffff";
+  colorInp.oninput = () => { wd.cor = colorInp.value; updateCanvasWidget(selectedWidgetIndex); scheduleSave(false); };
+  colorField.append(colorLabel, colorInp); grid.appendChild(colorField);
+
+  const bgColorField = document.createElement("div"); bgColorField.className = "field";
+  const bgColorLabel = document.createElement("label"); bgColorLabel.textContent = t("custom.props.bgcolor");
+  const bgColorInp = document.createElement("input"); bgColorInp.type = "color"; bgColorInp.value = wd.cor_fundo || "#1b1e26";
+  bgColorInp.oninput = () => { wd.cor_fundo = bgColorInp.value; scheduleSave(false); };
+  bgColorField.append(bgColorLabel, bgColorInp); grid.appendChild(bgColorField);
+
+  box.appendChild(grid);
+
+  const toggles = document.createElement("div"); toggles.style.cssText = "display:flex;gap:16px;margin-top:10px;flex-wrap:wrap";
+  const boldLabel = document.createElement("label"); boldLabel.className = "chk";
+  const boldCb = document.createElement("input"); boldCb.type = "checkbox"; boldCb.checked = !!wd.negrito;
+  boldCb.onchange = () => { wd.negrito = boldCb.checked; scheduleSave(true); };
+  boldLabel.append(boldCb, document.createTextNode(" " + t("custom.props.bold")));
+  const bgLabel = document.createElement("label"); bgLabel.className = "chk";
+  const bgCb = document.createElement("input"); bgCb.type = "checkbox"; bgCb.checked = !!wd.fundo;
+  bgCb.onchange = () => { wd.fundo = bgCb.checked; scheduleSave(true); };
+  bgLabel.append(bgCb, document.createTextNode(" " + t("custom.props.bg")));
+  toggles.append(boldLabel, bgLabel);
+  box.appendChild(toggles);
+
+  const removeBtn = document.createElement("button"); removeBtn.className = "btn danger"; removeBtn.style.marginTop = "12px";
+  removeBtn.textContent = t("custom.props.remove");
+  removeBtn.onclick = () => { widgets.splice(selectedWidgetIndex, 1); selectedWidgetIndex = -1; renderCustomEditor(); scheduleSave(true); };
+  box.appendChild(removeBtn);
+}
+
+// atualiza só o rótulo/borda do bloco já desenhado, sem re-renderizar tudo
+// (evita perder o foco do campo de texto/cor enquanto o usuário mexe neles).
+function updateCanvasWidget(i) {
+  const wd = cfg.telas.personalizada.widgets[i];
+  const el = $("#ccanvas").children[i];
+  if (!el || !wd) return;
+  el.style.borderColor = wd.cor || "";
+  const label = el.querySelector("span");
+  if (label) label.textContent = wd.tipo === "texto" && wd.texto ? wd.texto : widgetLabel(wd.tipo);
+}
+
+// move o bloco arrastando o corpo dele, ou redimensiona arrastando o
+// cantinho (.cresize) — os dois usam ponteiro em vez de HTML5 drag-and-drop
+// porque precisam de posição contínua, não só um alvo de soltura. Um clique
+// sem arrastar (abaixo de MOVE_THRESHOLD) seleciona o bloco pra editar.
+const MOVE_THRESHOLD = 4;
+function bindCustomWidgetDrag(el, wd, resizeHandle, index) {
+  let mode = null, startX = 0, startY = 0, orig = null, moved = false;
+  const onMove = e => {
+    const rect = $("#ccanvas").getBoundingClientRect();
+    const dx = (e.clientX - startX) / rect.width, dy = (e.clientY - startY) / rect.height;
+    if (Math.abs(e.clientX - startX) > MOVE_THRESHOLD || Math.abs(e.clientY - startY) > MOVE_THRESHOLD) moved = true;
+    if (mode === "move") {
+      wd.x = clamp01(orig.x + dx, 0, 1 - wd.w);
+      wd.y = clamp01(orig.y + dy, 0, 1 - wd.h);
+    } else if (mode === "resize") {
+      wd.w = clamp01(orig.w + dx, 0.06, 1 - wd.x);
+      wd.h = clamp01(orig.h + dy, 0.06, 1 - wd.y);
+    }
+    el.style.left = (wd.x * 100) + "%"; el.style.top = (wd.y * 100) + "%";
+    el.style.width = (wd.w * 100) + "%"; el.style.height = (wd.h * 100) + "%";
+  };
+  const onUp = () => {
+    document.removeEventListener("pointermove", onMove);
+    document.removeEventListener("pointerup", onUp);
+    if (moved) scheduleSave(true);
+    else selectWidget(index);
+    mode = null;
+  };
+  el.addEventListener("pointerdown", e => {
+    if (e.target === resizeHandle) return;
+    e.preventDefault();
+    mode = "move"; moved = false; startX = e.clientX; startY = e.clientY; orig = {x: wd.x, y: wd.y};
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  });
+  resizeHandle.addEventListener("pointerdown", e => {
+    e.preventDefault(); e.stopPropagation();
+    mode = "resize"; moved = false; startX = e.clientX; startY = e.clientY; orig = {w: wd.w, h: wd.h};
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  });
+}
+
+// wire-up único do "soltar" na tela (arrastar um bloco novo da paleta) — feito
+// uma vez só, fora do render, pra não empilhar listeners a cada renderConfig.
+const CUSTOM_BG_BY_DEFAULT = ["cpu_temperatura", "gpu_temperatura", "ram_barra", "disco_barra", "rede", "tempo_ligado", "jogo_tempo"];
+function bindCustomEditor() {
+  const canvas = $("#ccanvas");
+  canvas.addEventListener("dragover", e => e.preventDefault());
+  canvas.addEventListener("drop", e => {
+    e.preventDefault();
+    const kind = e.dataTransfer.getData("text/plain");
+    if (!CUSTOM_WIDGET_KINDS.includes(kind) || !cfg) return;
+    const rect = canvas.getBoundingClientRect();
+    const w = 0.42, h = 0.18;
+    const x = clamp01((e.clientX - rect.left) / rect.width - w / 2, 0, 1 - w);
+    const y = clamp01((e.clientY - rect.top) / rect.height - h / 2, 0, 1 - h);
+    const widgets = cfg.telas.personalizada.widgets || (cfg.telas.personalizada.widgets = []);
+    widgets.push({tipo: kind, x, y, w, h, fundo: CUSTOM_BG_BY_DEFAULT.includes(kind)});
+    cfg.telas.personalizada.ativa = true;
+    selectedWidgetIndex = widgets.length - 1;
+    renderCustomEditor(); renderScreens(); scheduleSave(true);
   });
 }
 
@@ -1014,7 +1288,7 @@ function renderDevices() {
       const row = document.createElement("div"); row.className = "row"; row.style.marginTop = "10px";
       const l = document.createElement("label"); l.style.cssText = "font-weight:600;font-size:13px"; l.textContent = t("mode.always_show");
       const sel = document.createElement("select"); sel.className = "inp"; sel.style.maxWidth = "220px";
-      ["musica", "jogo", "sistema", "relogio"].forEach(k => sel.appendChild(new Option(screenName(k), k, false, dev.modo.tela_fixa === k)));
+      ["musica", "jogo", "sistema", "relogio", "personalizada"].forEach(k => sel.appendChild(new Option(screenName(k), k, false, dev.modo.tela_fixa === k)));
       sel.onchange = () => { dev.modo.tela_fixa = sel.value; scheduleSave(true); };
       row.append(l, sel);
       card.appendChild(row);
@@ -1318,7 +1592,7 @@ $$("#steamSrc button").forEach(b => b.onclick = () => { cfg.steam.fonte = b.data
 $("#presets").innerHTML = PRESETS.map((p, i) => `<button class="preset" data-p="${i}"><i>${p.c.map(c => `<b style="background:${c}"></b>`).join("")}</i>${p.n}</button>`).join("");
 $$("#presets .preset").forEach(b => b.onclick = () => {
   const c = PRESETS[+b.dataset.p].c;
-  Object.assign(cfg.tema, {cor_musica:c[0], cor_jogo:c[1], cor_sistema:c[2], cor_relogio:c[3]});
+  Object.assign(cfg.tema, {cor_musica:c[0], cor_jogo:c[1], cor_sistema:c[2], cor_relogio:c[3], cor_personalizada:c[4]});
   renderConfig(); scheduleSave(true);
 });
 $("#deviceSel").onchange = () => { selectedDeviceIndex = parseInt($("#deviceSel").value, 10) || 0; renderConfig(); renderState(); };
@@ -1339,6 +1613,7 @@ $("#btnAddDevice").onclick = () => {
 applyI18n();
 (async () => {
   bindFields();
+  bindCustomEditor();
   try { cfg = await api("/api/config"); renderConfig(); } catch (e) { toast(t("toast.config_error"), false); }
   loadInfo();
   loadPorts();

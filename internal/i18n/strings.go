@@ -15,7 +15,9 @@ var catalog = map[string]map[Lang]string{
 	"music.hint":        {PT: "Dê play no Spotify, YouTube…", EN: "Press play on Spotify, YouTube…", ES: "Reproduce algo en Spotify, YouTube…", JA: "Spotify や YouTube で再生してください…", ZH: "在 Spotify、YouTube 等应用中播放音乐…"},
 
 	// tela de jogo
-	"game.header":               {PT: "JOGANDO AGORA", EN: "NOW PLAYING", ES: "JUGANDO AHORA", JA: "プレイ中", ZH: "正在游戏"},
+	// "NOW PLAYING" em inglês já é o cabeçalho da tela de música: a tela do jogo
+	// precisa de um texto próprio, senão as duas ficam idênticas.
+	"game.header":               {PT: "JOGANDO AGORA", EN: "IN GAME", ES: "JUGANDO AHORA", JA: "プレイ中", ZH: "正在游戏"},
 	"game.empty_title":          {PT: "Nenhum jogo aberto", EN: "No game open", ES: "Ningún juego abierto", JA: "起動中のゲームはありません", ZH: "没有正在运行的游戏"},
 	"game.empty_detail":         {PT: "Abra um jogo pela Steam", EN: "Open a game through Steam", ES: "Abre un juego desde Steam", JA: "Steam でゲームを起動してください", ZH: "通过 Steam 打开一个游戏"},
 	"game.notfound_title":       {PT: "Steam não encontrada", EN: "Steam not found", ES: "Steam no encontrada", JA: "Steam が見つかりません", ZH: "未找到 Steam"},
@@ -25,6 +27,11 @@ var catalog = map[string]map[Lang]string{
 	"game.total":                {PT: "TOTAL JOGADO", EN: "TOTAL PLAYED", ES: "TOTAL JUGADO", JA: "合計プレイ時間", ZH: "总游戏时长"},
 	"game.twoweeks":             {PT: "ÚLT. 2 SEMANAS", EN: "LAST 2 WEEKS", ES: "ÚLT. 2 SEMANAS", JA: "過去2週間", ZH: "近2周"},
 	"game.session_suffix":       {PT: "nesta sessão", EN: "this session", ES: "esta sesión", JA: "今回のセッション", ZH: "本次会话"},
+
+	// tela personalizada
+	"custom.header":       {PT: "PERSONALIZADA", EN: "CUSTOM", ES: "PERSONALIZADA", JA: "カスタム", ZH: "自定义"},
+	"custom.empty_title":  {PT: "Nenhum widget ainda", EN: "No widgets yet", ES: "Aún no hay widgets", JA: "ウィジェットがまだありません", ZH: "还没有添加小组件"},
+	"custom.empty_detail": {PT: "Monte esta tela arrastando widgets no painel web", EN: "Build this screen by dragging widgets in the web panel", ES: "Arma esta pantalla arrastrando widgets en el panel web", JA: "Web パネルでウィジェットをドラッグしてこの画面を作成してください", ZH: "在网页面板中拖动小组件来搭建这个屏幕"},
 
 	// tela de sistema
 	"system.header":        {PT: "SISTEMA", EN: "SYSTEM", ES: "SISTEMA", JA: "システム", ZH: "系统"},

@@ -25,10 +25,50 @@ const (
 	ScreenGame   Screen = "jogo"
 	ScreenSystem Screen = "sistema"
 	ScreenClock  Screen = "relogio"
+	ScreenCustom Screen = "personalizada"
 )
 
 // AllScreens lista as telas na ordem padrão de prioridade.
-var AllScreens = []Screen{ScreenGame, ScreenMusic, ScreenSystem, ScreenClock}
+var AllScreens = []Screen{ScreenGame, ScreenMusic, ScreenSystem, ScreenClock, ScreenCustom}
+
+// CustomWidgetKinds lista os tipos de widget aceitos na tela personalizada
+// (o editor arrasta-e-solta do painel web usa os mesmos identificadores).
+var CustomWidgetKinds = []string{
+	"relogio", "data", "texto",
+	"cpu_medidor", "gpu_medidor", "cpu_temperatura", "gpu_temperatura",
+	"ram_barra", "disco_barra", "rede", "tempo_ligado",
+	"musica_titulo", "musica_capa", "musica_progresso",
+	"jogo_nome", "jogo_capa", "jogo_tempo",
+}
+
+// CustomWidgetStyles lista as variações de gráfico aceitas para os widgets
+// que suportam mais de uma (por enquanto, só os medidores de CPU/GPU).
+// "" e "medidor" são equivalentes (arco, o visual original).
+var CustomWidgetStyles = []string{"medidor", "barra", "numero"}
+
+// IsKnownCustomWidget diz se kind é um tipo de widget que a tela
+// personalizada sabe desenhar.
+func IsKnownCustomWidget(kind string) bool {
+	for _, k := range CustomWidgetKinds {
+		if k == kind {
+			return true
+		}
+	}
+	return false
+}
+
+func isKnownCustomStyle(s string) bool {
+	for _, k := range CustomWidgetStyles {
+		if k == s {
+			return true
+		}
+	}
+	return false
+}
+
+// maxCustomWidgets evita que a API deixe salvar uma tela personalizada com
+// widgets demais (o painel web já limita isso, mas a validação é no servidor).
+const maxCustomWidgets = 24
 
 // Modos de exibição.
 const (
@@ -77,6 +117,31 @@ type ScreensConfig struct {
 	Game   GameScreen   `json:"jogo"`
 	System SystemScreen `json:"sistema"`
 	Clock  ClockScreen  `json:"relogio"`
+	Custom CustomScreen `json:"personalizada"`
+}
+
+// CustomScreen é a tela montada pelo usuário no editor arrasta-e-solta do
+// painel: uma lista de widgets posicionados livremente na tela.
+type CustomScreen struct {
+	Enabled bool           `json:"ativa"`
+	Widgets []CustomWidget `json:"widgets"`
+}
+
+// CustomWidget é um bloco de informação posicionado na tela personalizada.
+// X, Y, W e H são frações (0..1) do tamanho da tela, não pixels — assim o
+// mesmo layout funciona tanto em retrato quanto em paisagem.
+type CustomWidget struct {
+	Type    string  `json:"tipo"`
+	X       float64 `json:"x"`
+	Y       float64 `json:"y"`
+	W       float64 `json:"w"`
+	H       float64 `json:"h"`
+	Style   string  `json:"estilo,omitempty"`    // variação visual (medidor/barra/numero) — só nos medidores de CPU/GPU
+	Text    string  `json:"texto,omitempty"`    // conteúdo do widget "texto" (texto livre)
+	Color   string  `json:"cor,omitempty"`      // cor do texto/destaque ("" = cor da tela)
+	Bold    bool    `json:"negrito,omitempty"`  // usa a fonte em negrito no texto principal
+	Bg      bool    `json:"fundo,omitempty"`    // desenha um cartão de fundo atrás do widget
+	BgColor string  `json:"cor_fundo,omitempty"` // cor do cartão de fundo ("" = translúcido padrão, só vale com Bg)
 }
 
 type MusicScreen struct {
@@ -124,6 +189,7 @@ type ThemeConfig struct {
 	AccentGame   string `json:"cor_jogo"`
 	AccentSystem string `json:"cor_sistema"`
 	AccentClock  string `json:"cor_relogio"`
+	AccentCustom string `json:"cor_personalizada"`
 	Background   string `json:"fundo"` // "gradiente" ou "solido"
 	BgColor      string `json:"cor_fundo"`
 }
@@ -173,9 +239,10 @@ func Default() Config {
 			Game:   GameScreen{Enabled: true, ShowCover: true, ShowTotal: true, ShowTwoWeeks: true, ShowSession: true},
 			System: SystemScreen{Enabled: true, ShowCPU: true, ShowGPU: true, ShowRAM: true, ShowNet: true, ShowDisk: true, ShowUptime: true, Disk: "C:"},
 			Clock:  ClockScreen{Enabled: true, Use24h: true, ShowSeconds: false, ShowDate: true},
+			Custom: CustomScreen{Enabled: false},
 		},
 		Theme: ThemeConfig{
-			AccentMusic: "#2dd4bf", AccentGame: "#66c0f4", AccentSystem: "#f59e0b", AccentClock: "#a5b4fc",
+			AccentMusic: "#2dd4bf", AccentGame: "#66c0f4", AccentSystem: "#f59e0b", AccentClock: "#a5b4fc", AccentCustom: "#f472b6",
 			Background: "gradiente", BgColor: "#101116",
 		},
 		Steam:    SteamConfig{Enabled: true, Source: "local", StatusSeconds: 15, LibrarySeconds: 300},
@@ -275,10 +342,48 @@ func (c *Config) Normalize() {
 	fixColor(&c.Theme.AccentGame, d.Theme.AccentGame)
 	fixColor(&c.Theme.AccentSystem, d.Theme.AccentSystem)
 	fixColor(&c.Theme.AccentClock, d.Theme.AccentClock)
+	fixColor(&c.Theme.AccentCustom, d.Theme.AccentCustom)
 	fixColor(&c.Theme.BgColor, d.Theme.BgColor)
 	if c.Theme.Background != "solido" {
 		c.Theme.Background = "gradiente"
 	}
+
+	// tela personalizada: descarta widgets de tipo desconhecido e mantém as
+	// caixas dentro dos limites da tela (0..1), sem passar do total permitido.
+	var widgets []CustomWidget
+	for _, wd := range c.Screens.Custom.Widgets {
+		if len(widgets) >= maxCustomWidgets || !IsKnownCustomWidget(wd.Type) {
+			continue
+		}
+		wd.X = clampF(wd.X, 0, 1)
+		wd.Y = clampF(wd.Y, 0, 1)
+		wd.W = clampF(wd.W, 0.05, 1)
+		wd.H = clampF(wd.H, 0.05, 1)
+		if wd.X+wd.W > 1 {
+			wd.W = 1 - wd.X
+		}
+		if wd.Y+wd.H > 1 {
+			wd.H = 1 - wd.Y
+		}
+		if wd.W <= 0 || wd.H <= 0 {
+			continue
+		}
+		if !isKnownCustomStyle(wd.Style) {
+			wd.Style = ""
+		}
+		if wd.Color != "" && !hexColor.MatchString(wd.Color) {
+			wd.Color = ""
+		}
+		if wd.BgColor != "" && !hexColor.MatchString(wd.BgColor) {
+			wd.BgColor = ""
+		}
+		wd.Text = strings.TrimSpace(wd.Text)
+		if len(wd.Text) > 48 {
+			wd.Text = string([]rune(wd.Text)[:48])
+		}
+		widgets = append(widgets, wd)
+	}
+	c.Screens.Custom.Widgets = widgets
 
 	if c.Steam.Source != "web" {
 		c.Steam.Source = "local"
@@ -327,6 +432,8 @@ func (c *Config) Enabled(s Screen) bool {
 		return c.Screens.System.Enabled
 	case ScreenClock:
 		return c.Screens.Clock.Enabled
+	case ScreenCustom:
+		return c.Screens.Custom.Enabled && len(c.Screens.Custom.Widgets) > 0
 	}
 	return false
 }
@@ -348,6 +455,16 @@ func fixColor(v *string, def string) {
 }
 
 func clamp(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
+func clampF(v, lo, hi float64) float64 {
 	if v < lo {
 		return lo
 	}

@@ -82,7 +82,7 @@ func TestNormalize(t *testing.T) {
 	c.Devices = []config.DeviceConfig{{Brightness: 500}}
 	c.Theme.AccentMusic = "vermelho"
 	c.Normalize()
-	if len(c.Screens.Order) != 4 || c.Screens.Order[0] != config.ScreenClock {
+	if len(c.Screens.Order) != 5 || c.Screens.Order[0] != config.ScreenClock {
 		t.Errorf("ordem: %v", c.Screens.Order)
 	}
 	if c.Devices[0].Brightness != 100 || c.Theme.AccentMusic != "#2dd4bf" || c.Devices[0].Port != "AUTO" {

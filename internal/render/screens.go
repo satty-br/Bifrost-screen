@@ -73,6 +73,8 @@ func Draw(s config.Screen, w, h int, in Input) *image.RGBA {
 		dc = drawGame(w, h, in, th)
 	case config.ScreenSystem:
 		dc = drawSystem(w, h, in, th)
+	case config.ScreenCustom:
+		dc = drawCustom(w, h, in, th)
 	default:
 		dc = drawClock(w, h, in, th)
 	}
@@ -115,6 +117,8 @@ func themeFor(s config.Screen, t config.ThemeConfig) Theme {
 		accent = t.AccentGame
 	case config.ScreenSystem:
 		accent = t.AccentSystem
+	case config.ScreenCustom:
+		accent = t.AccentCustom
 	}
 	return Theme{
 		Accent:   ParseHex(accent, color.RGBA{45, 212, 191, 255}),
