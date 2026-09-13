@@ -22,7 +22,7 @@ import (
 // em modo agente (--sensores) com privilégio máximo. O agente publica a
 // temperatura num arquivo em %ProgramData%\Bifrost, que o Bifrost do usuário
 // lê sem precisar de permissão nenhuma.
-const tarefaSensores = "Bifrost Sensores"
+const tarefaSensores = pawnio.TarefaAgente
 
 const intervaloAgente = 2 * time.Second
 

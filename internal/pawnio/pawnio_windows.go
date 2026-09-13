@@ -357,3 +357,42 @@ func Desinstalar() error {
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	return cmd.Run()
 }
+
+// --- agente elevado ---------------------------------------------------------
+
+// TarefaAgente é o nome da tarefa agendada que roda o agente elevado (o
+// próprio bifrost.exe em modo --sensores; veja cmd/bifrost/sensores_windows.go).
+// Fica aqui pra este pacote conseguir religá-la sozinho sem duplicar o nome.
+const TarefaAgente = "Bifrost Sensores"
+
+var (
+	reiniciarMu sync.Mutex
+	reiniciarEm time.Time
+)
+
+// GarantirAgenteRodando religa o agente se o driver estiver instalado mas a
+// última leitura estiver velha — o processo do agente morreu por algum
+// motivo (ex.: alguém encerra todo processo "bifrost.exe" por engano, o que
+// também mata o agente por terem o mesmo nome executável). Não precisa de
+// elevação: a tarefa agendada já guarda seu próprio nível de privilégio
+// (/RL HIGHEST), então o Windows eleva sozinho ao rodá-la, mesmo chamada por
+// um processo comum — não pede UAC de novo. Limitado a uma tentativa a cada
+// 20s pra não martelar o schtasks.exe a cada amostra de temperatura.
+func GarantirAgenteRodando() {
+	if ok, _ := Instalado(); !ok {
+		return
+	}
+	if l, err := LerLeitura(); err == nil && l.Fresca() {
+		return
+	}
+	reiniciarMu.Lock()
+	if time.Since(reiniciarEm) < 20*time.Second {
+		reiniciarMu.Unlock()
+		return
+	}
+	reiniciarEm = time.Now()
+	reiniciarMu.Unlock()
+	cmd := exec.Command("schtasks.exe", "/Run", "/TN", TarefaAgente)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	_ = cmd.Run()
+}

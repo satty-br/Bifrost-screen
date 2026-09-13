@@ -39,6 +39,7 @@ const tempCacheFor = 5 * time.Second
 func readPawnIOAgente() (cpu, gpu float64) {
 	l, err := pawnio.LerLeitura()
 	if err != nil || !l.Fresca() || !validTemp(l.CPU) {
+		pawnio.GarantirAgenteRodando()
 		return -1, -1
 	}
 	return l.CPU, -1
