@@ -54,6 +54,7 @@ func (s *Server) Serve(ln net.Listener) error {
 	mux.HandleFunc("PUT /api/config", s.putConfig)
 	mux.HandleFunc("POST /api/config/padrao", s.resetConfig)
 	mux.HandleFunc("GET /api/previa.png", s.preview)
+	mux.HandleFunc("GET /api/previa_personalizada.png", s.previewCustom)
 	mux.HandleFunc("GET /api/portas", s.ports)
 	mux.HandleFunc("POST /api/acao", s.action)
 	mux.HandleFunc("POST /api/steam/testar", s.testSteam)
@@ -162,6 +163,23 @@ func (s *Server) preview(w http.ResponseWriter, r *http.Request) {
 	data, id := s.App.PreviewPNG(r.URL.Query().Get("dispositivo"))
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("X-Frame", strconv.FormatUint(id, 10))
+	_, _ = w.Write(data)
+}
+
+// previewCustom desenha a tela personalizada com os dados reais atuais, no
+// tamanho pedido (?w=&h=, padrão 240x360) — usado pelo editor arrasta-e-solta
+// do painel pra mostrar uma prévia ao vivo de como a tela vai ficar.
+func (s *Server) previewCustom(w http.ResponseWriter, r *http.Request) {
+	ww, hh := 240, 360
+	if v, err := strconv.Atoi(r.URL.Query().Get("w")); err == nil && v > 0 && v <= 2000 {
+		ww = v
+	}
+	if v, err := strconv.Atoi(r.URL.Query().Get("h")); err == nil && v > 0 && v <= 2000 {
+		hh = v
+	}
+	data := s.App.PreviewCustomScreen(ww, hh)
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write(data)
 }
 

@@ -123,8 +123,10 @@ type ScreensConfig struct {
 // CustomScreen é a tela montada pelo usuário no editor arrasta-e-solta do
 // painel: uma lista de widgets posicionados livremente na tela.
 type CustomScreen struct {
-	Enabled bool           `json:"ativa"`
-	Widgets []CustomWidget `json:"widgets"`
+	Enabled    bool           `json:"ativa"`
+	Background string         `json:"fundo,omitempty"`    // "" (usa o tema geral), "gradiente" ou "solido"
+	BgColor    string         `json:"cor_fundo,omitempty"` // "" (usa o tema geral) ou "#rrggbb"
+	Widgets    []CustomWidget `json:"widgets"`
 }
 
 // CustomWidget é um bloco de informação posicionado na tela personalizada.
@@ -346,6 +348,14 @@ func (c *Config) Normalize() {
 	fixColor(&c.Theme.BgColor, d.Theme.BgColor)
 	if c.Theme.Background != "solido" {
 		c.Theme.Background = "gradiente"
+	}
+
+	// tela personalizada: fundo próprio (opcional; "" = herda o tema geral).
+	if c.Screens.Custom.Background != "gradiente" && c.Screens.Custom.Background != "solido" {
+		c.Screens.Custom.Background = ""
+	}
+	if c.Screens.Custom.BgColor != "" && !hexColor.MatchString(c.Screens.Custom.BgColor) {
+		c.Screens.Custom.BgColor = ""
 	}
 
 	// tela personalizada: descarta widgets de tipo desconhecido e mantém as

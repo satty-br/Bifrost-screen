@@ -971,6 +971,26 @@ func (a *App) InstallUpdate(ctx context.Context) error {
 	return nil
 }
 
+// PreviewCustomScreen desenha a tela personalizada com os dados reais atuais
+// (CPU, música, jogo…) e devolve o PNG pronto, no tamanho pedido — usado pelo
+// editor arrasta-e-solta do painel pra mostrar uma prévia ao vivo enquanto o
+// usuário monta a tela, sem precisar de uma tela USB conectada.
+func (a *App) PreviewCustomScreen(w, h int) []byte {
+	cfg := a.store.Get()
+	in := render.Input{
+		Now: time.Now(), Cfg: cfg, Media: a.media.Get(), Steam: a.steam.Get(), System: a.sys.Get(),
+		Lang: cfg.ResolvedLanguage(), SteamReady: cfg.Steam.Enabled && a.steam.Ready(),
+	}
+	if cfg.GameData.Enabled {
+		in.GameLive = a.currentLiveMatch()
+		in.FPS = a.currentFPS()
+	}
+	img := render.Draw(config.ScreenCustom, w, h, in)
+	var buf bytes.Buffer
+	_ = (&png.Encoder{CompressionLevel: png.BestSpeed}).Encode(&buf, img)
+	return buf.Bytes()
+}
+
 // PreviewPNG devolve o frame atual do dispositivo id em PNG (com cache por frame).
 func (a *App) PreviewPNG(id string) ([]byte, uint64) {
 	cfg := a.store.Get()

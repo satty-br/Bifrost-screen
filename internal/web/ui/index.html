@@ -169,14 +169,18 @@ select.inp{padding-right:8px}
 .cchip{display:flex;align-items:center;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);cursor:grab;font-size:12px;font-weight:600;user-select:none}
 .cchip:active{cursor:grabbing}
 .ccanvas{position:relative;width:240px;height:360px;border-radius:18px;border:1px solid var(--line2);background:#101116;overflow:hidden;flex:none}
-.cwidget{position:absolute;border-radius:8px;border:1px solid color-mix(in srgb,var(--accent) 55%,transparent);background:color-mix(in srgb,var(--accent) 20%,transparent);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;color:#fff;text-align:center;cursor:move;touch-action:none;overflow:hidden;padding:2px;line-height:1.2}
-.cwidget.selected{border-width:2px;box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 50%,transparent)}
+.ccanvas-preview{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.ccanvas-widgets{position:absolute;inset:0}
+.cwidget{position:absolute;border-radius:8px;border:2px dashed color-mix(in srgb,var(--accent) 70%,transparent);background:color-mix(in srgb,var(--accent) 8%,transparent);cursor:move;touch-action:none;overflow:hidden}
+.cwidget.selected{border-style:solid;box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 50%,transparent)}
+.cwidget .clabel{position:absolute;top:3px;left:5px;right:20px;font-size:9.5px;font-weight:600;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);pointer-events:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cwidget .cdel{position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;line-height:1}
 .cwidget .cresize{position:absolute;right:0;bottom:0;width:14px;height:14px;cursor:nwse-resize;background:color-mix(in srgb,var(--accent) 75%,transparent);border-top-left-radius:6px}
-.cempty{color:var(--faint);font-size:12px;padding:10px}
+.cempty{color:var(--faint);font-size:12px;padding:10px;position:relative}
 .cprops-box{flex:1;min-width:220px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:14px}
 .cprops-grid{display:grid;grid-template-columns:1fr;gap:10px}
 .cprops-grid input[type=color]{width:100%;height:36px;border:1px solid var(--line2);border-radius:8px;padding:0;background:none;cursor:pointer}
+#customBgColor{width:34px;height:34px;border:0;border-radius:9px;padding:0;background:none;cursor:pointer}
 
 /* alertas */
 .alert{display:flex;gap:14px;padding:14px 16px;border-radius:var(--r);border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);background:color-mix(in srgb,var(--warn) 10%,var(--panel))}
@@ -281,9 +285,21 @@ select.inp{padding-right:8px}
         <div class="hd"><h2 data-i18n="custom.editor.title">Tela personalizada</h2></div>
         <div class="bd">
           <p class="hint" style="margin:0 0 14px" data-i18n="custom.editor.hint">Arraste um bloco da lista pra tela abaixo. Depois, arraste o bloco pra mover, ou puxe o cantinho pra redimensionar.</p>
+          <div class="row" style="align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:600" data-i18n="custom.bg.label">Fundo da tela</span>
+            <div class="seg" id="customBgSeg">
+              <button type="button" data-bg="" data-i18n="custom.bg.theme">Tema geral</button>
+              <button type="button" data-bg="gradiente" data-i18n="appearance.gradient">Gradiente</button>
+              <button type="button" data-bg="solido" data-i18n="appearance.solid">Sólido</button>
+            </div>
+            <input type="color" id="customBgColor" title="Cor de fundo da tela personalizada" data-i18n-title="custom.bg.color_title">
+          </div>
           <div class="ceditor">
             <div class="cpalette" id="cpalette"></div>
-            <div class="ccanvas" id="ccanvas"></div>
+            <div class="ccanvas" id="ccanvas">
+              <img class="ccanvas-preview" id="ccanvasPreview" alt="">
+              <div class="ccanvas-widgets" id="ccanvasWidgets"></div>
+            </div>
             <div class="cprops-box">
               <div style="font-weight:650;margin-bottom:10px" data-i18n="custom.props.title">Propriedades do bloco</div>
               <div id="cprops"></div>
@@ -688,6 +704,9 @@ const I18N = {
 "custom.editor.title":{pt:"Tela personalizada",en:"Custom screen",es:"Pantalla personalizada",ja:"カスタム画面",zh:"自定义屏幕"},
 "custom.editor.hint":{pt:"Arraste um bloco da lista pra tela abaixo. Depois, arraste o bloco pra mover, ou puxe o cantinho pra redimensionar.",en:"Drag a block from the list onto the screen below. Then drag the block to move it, or pull its corner to resize.",es:"Arrastra un bloque de la lista a la pantalla de abajo. Luego arrastra el bloque para moverlo, o tira de la esquina para redimensionar.",ja:"リストのブロックを下の画面にドラッグしてください。ブロックをドラッグして移動、角を引っ張ってサイズ変更できます。",zh:"把列表中的模块拖到下面的屏幕上。之后可以拖动模块来移动,拖动角落来调整大小。"},
 "custom.editor.remove_aria":{pt:"Remover bloco",en:"Remove block",es:"Quitar bloque",ja:"ブロックを削除",zh:"移除模块"},
+"custom.bg.label":{pt:"Fundo da tela",en:"Screen background",es:"Fondo de la pantalla",ja:"画面の背景",zh:"屏幕背景"},
+"custom.bg.theme":{pt:"Tema geral",en:"General theme",es:"Tema general",ja:"全体のテーマ",zh:"通用主题"},
+"custom.bg.color_title":{pt:"Cor de fundo da tela personalizada",en:"Custom screen background color",es:"Color de fondo de la pantalla personalizada",ja:"カスタム画面の背景色",zh:"自定义屏幕背景颜色"},
 "custom.editor.empty":{pt:"Nenhum bloco ainda — arraste um da lista à esquerda",en:"No blocks yet — drag one from the list on the left",es:"Aún no hay bloques — arrastra uno de la lista de la izquierda",ja:"まだブロックがありません — 左のリストからドラッグしてください",zh:"还没有模块 — 从左侧列表中拖一个过来"},
 "custom.widget.relogio":{pt:"Relógio",en:"Clock",es:"Reloj",ja:"時計",zh:"时钟"},
 "custom.widget.data":{pt:"Data",en:"Date",es:"Fecha",ja:"日付",zh:"日期"},
@@ -862,6 +881,7 @@ function renderConfig() {
   $("#noDevicesToAdd").hidden = !cfg.mancer.ativado;
   renderScreens();
   renderDevices();
+  renderCustomBg();
   renderCustomEditor();
 }
 
@@ -990,7 +1010,7 @@ function renderCustomEditor() {
   }
   pal.querySelectorAll(".cchip").forEach(c => c.textContent = widgetLabel(c.dataset.kind));
 
-  const canvas = $("#ccanvas");
+  const canvas = $("#ccanvasWidgets");
   const widgets = cfg.telas.personalizada.widgets || (cfg.telas.personalizada.widgets = []);
   if (selectedWidgetIndex >= widgets.length) selectedWidgetIndex = -1;
   canvas.innerHTML = "";
@@ -1005,6 +1025,7 @@ function renderCustomEditor() {
     el.style.width = (wd.w * 100) + "%"; el.style.height = (wd.h * 100) + "%";
     if (wd.cor) el.style.borderColor = wd.cor;
     const labelSpan = document.createElement("span");
+    labelSpan.className = "clabel";
     labelSpan.textContent = wd.tipo === "texto" && wd.texto ? wd.texto : widgetLabel(wd.tipo);
     const del = document.createElement("span"); del.className = "cdel"; del.textContent = "×";
     del.setAttribute("aria-label", t("custom.editor.remove_aria"));
@@ -1095,10 +1116,10 @@ function renderWidgetProps() {
 // (evita perder o foco do campo de texto/cor enquanto o usuário mexe neles).
 function updateCanvasWidget(i) {
   const wd = cfg.telas.personalizada.widgets[i];
-  const el = $("#ccanvas").children[i];
+  const el = $("#ccanvasWidgets").children[i];
   if (!el || !wd) return;
   el.style.borderColor = wd.cor || "";
-  const label = el.querySelector("span");
+  const label = el.querySelector(".clabel");
   if (label) label.textContent = wd.tipo === "texto" && wd.texto ? wd.texto : widgetLabel(wd.tipo);
 }
 
@@ -1165,6 +1186,29 @@ function bindCustomEditor() {
     selectedWidgetIndex = widgets.length - 1;
     renderCustomEditor(); renderScreens(); scheduleSave(true);
   });
+  $$("#customBgSeg button").forEach(b => b.onclick = () => {
+    cfg.telas.personalizada.fundo = b.dataset.bg;
+    renderCustomBg(); scheduleSave(true);
+  });
+  $("#customBgColor").oninput = e => {
+    cfg.telas.personalizada.cor_fundo = e.target.value;
+    scheduleSave(false);
+  };
+}
+
+// reflete telas.personalizada.fundo/cor_fundo nos controles (chamado pelo renderConfig).
+function renderCustomBg() {
+  if (!cfg) return;
+  const cs = cfg.telas.personalizada;
+  $$("#customBgSeg button").forEach(b => b.setAttribute("aria-pressed", (cs.fundo || "") === b.dataset.bg));
+  $("#customBgColor").value = cs.cor_fundo || sanitizeColor(cfg.tema.cor_fundo);
+}
+
+// pede ao servidor uma prévia real (com os dados atuais) da tela
+// personalizada, só enquanto a aba Telas estiver visível.
+function refreshCustomPreview() {
+  if (!cfg || !$("#pane-telas").classList.contains("on")) return;
+  $("#ccanvasPreview").src = "/api/previa_personalizada.png?w=240&h=360&_=" + Date.now();
 }
 
 // ---------- dispositivos (telas USB)
@@ -1479,6 +1523,7 @@ let failures = 0;
 async function poll() {
   try { state = await api("/api/estado"); failures = 0; $("#offline").classList.remove("on"); renderState(); }
   catch { if (++failures > 3) $("#offline").classList.add("on"); }
+  refreshCustomPreview();
   setTimeout(poll, 1000);
 }
 

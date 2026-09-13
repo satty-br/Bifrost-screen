@@ -17,9 +17,16 @@ import (
 // fundo e (nos medidores) o tipo de gráfico são escolhidos por widget no
 // editor arrasta-e-solta do painel.
 func drawCustom(w, h int, in Input, th Theme) *gg.Context {
+	cs := in.Cfg.Screens.Custom
+	if cs.BgColor != "" {
+		th.Bg = ParseHex(cs.BgColor, th.Bg)
+	}
+	if cs.Background != "" {
+		th.Gradient = cs.Background == "gradiente"
+	}
 	dc := newCanvas(w, h, th)
 	fw, fh := float64(w), float64(h)
-	widgets := in.Cfg.Screens.Custom.Widgets
+	widgets := cs.Widgets
 	if len(widgets) == 0 {
 		header(dc, fw, i18n.T(in.Lang, "custom.header"), th.Accent, "")
 		textCenter(dc, i18n.T(in.Lang, "custom.empty_title"), fw/2, fh/2-8, face(fontMedium, 16), colFg)
