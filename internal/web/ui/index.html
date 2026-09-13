@@ -301,9 +301,14 @@ select.inp{padding-right:8px}
               <button type="button" data-bg="" data-i18n="custom.bg.theme">Tema geral</button>
               <button type="button" data-bg="gradiente" data-i18n="appearance.gradient">Gradiente</button>
               <button type="button" data-bg="solido" data-i18n="appearance.solid">Sólido</button>
+              <button type="button" data-bg="imagem" data-i18n="custom.bg.image">Imagem</button>
             </div>
             <input type="color" id="customBgColor" title="Cor de fundo da tela personalizada" data-i18n-title="custom.bg.color_title">
+            <button type="button" class="btn" id="btnCustomBgImage" data-i18n="custom.bg.choose_image" hidden>Escolher imagem…</button>
+            <button type="button" class="btn danger" id="btnCustomBgImageRemove" data-i18n="custom.bg.remove_image" hidden>Remover imagem</button>
+            <input type="file" id="customBgImageFile" accept="image/*" hidden>
           </div>
+          <p class="hint" id="customBgImageStatus" hidden style="margin:-8px 0 14px"></p>
           <div class="ceditor">
             <div class="cpalette" id="cpalette"></div>
             <div class="ccanvas" id="ccanvas">
@@ -707,6 +712,11 @@ const I18N = {
 "custom.bg.label":{pt:"Fundo da tela",en:"Screen background",es:"Fondo de la pantalla",ja:"画面の背景",zh:"屏幕背景"},
 "custom.bg.theme":{pt:"Tema geral",en:"General theme",es:"Tema general",ja:"全体のテーマ",zh:"通用主题"},
 "custom.bg.color_title":{pt:"Cor de fundo da tela personalizada",en:"Custom screen background color",es:"Color de fondo de la pantalla personalizada",ja:"カスタム画面の背景色",zh:"自定义屏幕背景颜色"},
+"custom.bg.image":{pt:"Imagem",en:"Image",es:"Imagen",ja:"画像",zh:"图片"},
+"custom.bg.choose_image":{pt:"Escolher imagem…",en:"Choose image…",es:"Elegir imagen…",ja:"画像を選択…",zh:"选择图片…"},
+"custom.bg.remove_image":{pt:"Remover imagem",en:"Remove image",es:"Quitar imagen",ja:"画像を削除",zh:"移除图片"},
+"custom.bg.uploading":{pt:"Enviando imagem…",en:"Uploading image…",es:"Subiendo imagen…",ja:"画像をアップロード中…",zh:"正在上传图片…"},
+"custom.bg.upload_failed":{pt:"Não deu pra enviar a imagem: %s",en:"Couldn't upload the image: %s",es:"No se pudo subir la imagen: %s",ja:"画像をアップロードできませんでした:%s",zh:"图片上传失败:%s"},
 "custom.editor.empty":{pt:"Nenhum bloco ainda — arraste um da lista à esquerda",en:"No blocks yet — drag one from the list on the left",es:"Aún no hay bloques — arrastra uno de la lista de la izquierda",ja:"まだブロックがありません — 左のリストからドラッグしてください",zh:"还没有模块 — 从左侧列表中拖一个过来"},
 "custom.widget.relogio":{pt:"Relógio",en:"Clock",es:"Reloj",ja:"時計",zh:"时钟"},
 "custom.widget.data":{pt:"Data",en:"Date",es:"Fecha",ja:"日付",zh:"日期"},
@@ -738,6 +748,7 @@ const I18N = {
 "custom.props.bold":{pt:"Negrito",en:"Bold",es:"Negrita",ja:"太字",zh:"粗体"},
 "custom.props.bg":{pt:"Fundo",en:"Background",es:"Fondo",ja:"背景",zh:"背景"},
 "custom.props.bgcolor":{pt:"Cor do fundo",en:"Background color",es:"Color de fondo",ja:"背景色",zh:"背景颜色"},
+"custom.props.font_size":{pt:"Tamanho da fonte",en:"Font size",es:"Tamaño de fuente",ja:"フォントサイズ",zh:"字体大小"},
 "opt.cover":{pt:"Capa",en:"Cover art",es:"Carátula",ja:"カバー画像",zh:"封面"},
 "opt.album":{pt:"Álbum",en:"Album",es:"Álbum",ja:"アルバム",zh:"专辑"},
 "opt.progress_bar":{pt:"Barra de progresso",en:"Progress bar",es:"Barra de progreso",ja:"進捗バー",zh:"进度条"},
@@ -992,7 +1003,9 @@ const CUSTOM_WIDGET_KINDS = [
   "jogo_nome", "jogo_capa", "jogo_tempo",
 ];
 // tipos que aceitam o seletor "tipo de gráfico" (medidor/barra/número)
-const CUSTOM_STYLE_KINDS = ["cpu_medidor", "gpu_medidor"];
+const CUSTOM_STYLE_KINDS = ["cpu_medidor", "gpu_medidor", "ram_barra", "disco_barra"];
+// tipos sem texto próprio (só imagem, ou o mm:ss fixo da barra de progresso): o controle de tamanho de fonte não faria nada neles
+const CUSTOM_NO_FONT_KINDS = ["musica_capa", "jogo_capa", "musica_progresso"];
 function widgetLabel(kind) { return t("custom.widget." + kind); }
 function clamp01(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 let selectedWidgetIndex = -1;
@@ -1091,6 +1104,23 @@ function renderWidgetProps() {
   const bgColorInp = document.createElement("input"); bgColorInp.type = "color"; bgColorInp.value = wd.cor_fundo || "#1b1e26";
   bgColorInp.oninput = () => { wd.cor_fundo = bgColorInp.value; scheduleSave(false); };
   bgColorField.append(bgColorLabel, bgColorInp); grid.appendChild(bgColorField);
+
+  if (!CUSTOM_NO_FONT_KINDS.includes(wd.tipo)) {
+    const f = document.createElement("div"); f.className = "field";
+    const l = document.createElement("label"); l.textContent = t("custom.props.font_size");
+    const row = document.createElement("div"); row.style.cssText = "display:flex;align-items:center;gap:8px";
+    const rng = document.createElement("input"); rng.type = "range"; rng.min = "0.5"; rng.max = "2"; rng.step = "0.1";
+    rng.value = wd.tamanho_fonte || 1;
+    const out = document.createElement("span"); out.style.cssText = "font-size:12px;color:var(--dim);min-width:36px;text-align:right";
+    out.textContent = Math.round((wd.tamanho_fonte || 1) * 100) + "%";
+    rng.oninput = () => {
+      wd.tamanho_fonte = parseFloat(rng.value);
+      out.textContent = Math.round(wd.tamanho_fonte * 100) + "%";
+      scheduleSave(false);
+    };
+    row.append(rng, out);
+    f.append(l, row); grid.appendChild(f);
+  }
 
   box.appendChild(grid);
 
@@ -1194,6 +1224,30 @@ function bindCustomEditor() {
     cfg.telas.personalizada.cor_fundo = e.target.value;
     scheduleSave(false);
   };
+  $("#btnCustomBgImage").onclick = () => $("#customBgImageFile").click();
+  $("#customBgImageFile").onchange = async e => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    const status = $("#customBgImageStatus");
+    status.hidden = false; status.textContent = t("custom.bg.uploading");
+    try {
+      const buf = await file.arrayBuffer();
+      const r = await fetch("/api/tela_personalizada/fundo", {method: "POST", headers: {"X-Bifrost": "1"}, body: buf});
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.erro || r.statusText);
+      cfg.telas.personalizada.fundo = "imagem";
+      status.hidden = true;
+      renderCustomBg(); refreshCustomPreview(); scheduleSave(true);
+    } catch (err) {
+      status.textContent = t("custom.bg.upload_failed", err.message);
+    }
+  };
+  $("#btnCustomBgImageRemove").onclick = async () => {
+    try { await fetch("/api/tela_personalizada/fundo", {method: "DELETE", headers: {"X-Bifrost": "1"}}); } catch {}
+    cfg.telas.personalizada.fundo = "";
+    renderCustomBg(); refreshCustomPreview(); scheduleSave(true);
+  };
 }
 
 // reflete telas.personalizada.fundo/cor_fundo nos controles (chamado pelo renderConfig).
@@ -1201,7 +1255,11 @@ function renderCustomBg() {
   if (!cfg) return;
   const cs = cfg.telas.personalizada;
   $$("#customBgSeg button").forEach(b => b.setAttribute("aria-pressed", (cs.fundo || "") === b.dataset.bg));
+  const isImg = cs.fundo === "imagem";
+  $("#customBgColor").hidden = isImg;
   $("#customBgColor").value = cs.cor_fundo || sanitizeColor(cfg.tema.cor_fundo);
+  $("#btnCustomBgImage").hidden = !isImg;
+  $("#btnCustomBgImageRemove").hidden = !isImg;
 }
 
 // pede ao servidor uma prévia real (com os dados atuais) da tela

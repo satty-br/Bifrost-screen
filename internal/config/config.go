@@ -124,8 +124,8 @@ type ScreensConfig struct {
 // painel: uma lista de widgets posicionados livremente na tela.
 type CustomScreen struct {
 	Enabled    bool           `json:"ativa"`
-	Background string         `json:"fundo,omitempty"`    // "" (usa o tema geral), "gradiente" ou "solido"
-	BgColor    string         `json:"cor_fundo,omitempty"` // "" (usa o tema geral) ou "#rrggbb"
+	Background string         `json:"fundo,omitempty"`     // "" (usa o tema geral), "gradiente", "solido" ou "imagem"
+	BgColor    string         `json:"cor_fundo,omitempty"` // "" (usa o tema geral) ou "#rrggbb" (ignorado se Background for "imagem")
 	Widgets    []CustomWidget `json:"widgets"`
 }
 
@@ -133,17 +133,18 @@ type CustomScreen struct {
 // X, Y, W e H são frações (0..1) do tamanho da tela, não pixels — assim o
 // mesmo layout funciona tanto em retrato quanto em paisagem.
 type CustomWidget struct {
-	Type    string  `json:"tipo"`
-	X       float64 `json:"x"`
-	Y       float64 `json:"y"`
-	W       float64 `json:"w"`
-	H       float64 `json:"h"`
-	Style   string  `json:"estilo,omitempty"`    // variação visual (medidor/barra/numero) — só nos medidores de CPU/GPU
-	Text    string  `json:"texto,omitempty"`    // conteúdo do widget "texto" (texto livre)
-	Color   string  `json:"cor,omitempty"`      // cor do texto/destaque ("" = cor da tela)
-	Bold    bool    `json:"negrito,omitempty"`  // usa a fonte em negrito no texto principal
-	Bg      bool    `json:"fundo,omitempty"`    // desenha um cartão de fundo atrás do widget
-	BgColor string  `json:"cor_fundo,omitempty"` // cor do cartão de fundo ("" = translúcido padrão, só vale com Bg)
+	Type     string  `json:"tipo"`
+	X        float64 `json:"x"`
+	Y        float64 `json:"y"`
+	W        float64 `json:"w"`
+	H        float64 `json:"h"`
+	Style    string  `json:"estilo,omitempty"`        // variação visual (medidor/barra/numero) — nos medidores de CPU/GPU e nas barras de RAM/disco
+	Text     string  `json:"texto,omitempty"`         // conteúdo do widget "texto" (texto livre)
+	Color    string  `json:"cor,omitempty"`           // cor do texto/destaque ("" = cor da tela)
+	Bold     bool    `json:"negrito,omitempty"`       // usa a fonte em negrito no texto principal
+	Bg       bool    `json:"fundo,omitempty"`         // desenha um cartão de fundo atrás do widget
+	BgColor  string  `json:"cor_fundo,omitempty"`     // cor do cartão de fundo ("" = translúcido padrão, só vale com Bg)
+	FontSize float64 `json:"tamanho_fonte,omitempty"` // multiplicador do tamanho de fonte (0 ou 1 = automático; 0.5-2.5)
 }
 
 type MusicScreen struct {
@@ -351,7 +352,9 @@ func (c *Config) Normalize() {
 	}
 
 	// tela personalizada: fundo próprio (opcional; "" = herda o tema geral).
-	if c.Screens.Custom.Background != "gradiente" && c.Screens.Custom.Background != "solido" {
+	switch c.Screens.Custom.Background {
+	case "gradiente", "solido", "imagem":
+	default:
 		c.Screens.Custom.Background = ""
 	}
 	if c.Screens.Custom.BgColor != "" && !hexColor.MatchString(c.Screens.Custom.BgColor) {
@@ -390,6 +393,9 @@ func (c *Config) Normalize() {
 		wd.Text = strings.TrimSpace(wd.Text)
 		if len(wd.Text) > 48 {
 			wd.Text = string([]rune(wd.Text)[:48])
+		}
+		if wd.FontSize != 0 {
+			wd.FontSize = clampF(wd.FontSize, 0.5, 2.5)
 		}
 		widgets = append(widgets, wd)
 	}

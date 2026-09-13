@@ -55,6 +55,8 @@ func (s *Server) Serve(ln net.Listener) error {
 	mux.HandleFunc("POST /api/config/padrao", s.resetConfig)
 	mux.HandleFunc("GET /api/previa.png", s.preview)
 	mux.HandleFunc("GET /api/previa_personalizada.png", s.previewCustom)
+	mux.HandleFunc("POST /api/tela_personalizada/fundo", s.setCustomBgImage)
+	mux.HandleFunc("DELETE /api/tela_personalizada/fundo", s.clearCustomBgImage)
 	mux.HandleFunc("GET /api/portas", s.ports)
 	mux.HandleFunc("POST /api/acao", s.action)
 	mux.HandleFunc("POST /api/steam/testar", s.testSteam)
@@ -181,6 +183,32 @@ func (s *Server) previewCustom(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write(data)
+}
+
+// maxCustomBgUpload evita que a API deixe subir uma imagem gigante (o app
+// só desenha telas pequenas: não precisa de mais que alguns MB).
+const maxCustomBgUpload = 8 << 20
+
+func (s *Server) setCustomBgImage(w http.ResponseWriter, r *http.Request) {
+	data, err := io.ReadAll(io.LimitReader(r.Body, maxCustomBgUpload+1))
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if len(data) > maxCustomBgUpload {
+		writeErr(w, http.StatusRequestEntityTooLarge, "imagem maior que 8 MB")
+		return
+	}
+	if err := s.App.SetCustomBackgroundImage(data); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, map[string]bool{"ok": true})
+}
+
+func (s *Server) clearCustomBgImage(w http.ResponseWriter, r *http.Request) {
+	s.App.ClearCustomBackgroundImage()
+	writeJSON(w, map[string]bool{"ok": true})
 }
 
 func (s *Server) ports(w http.ResponseWriter, r *http.Request) {

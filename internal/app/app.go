@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	_ "image/gif"
+	_ "image/jpeg"
 	"image/png"
 	"log"
 	"os"
@@ -179,6 +181,10 @@ type App struct {
 	mancerCancel   context.CancelFunc
 	gameDataOn     bool
 	gameDataCancel context.CancelFunc
+
+	bgMu  sync.Mutex
+	bgImg image.Image // cache da imagem de fundo da tela personalizada
+	bgAt  time.Time   // data de modificação do arquivo quando bgImg foi lida
 }
 
 func New(store *config.Store, cacheDir, version string) *App {
@@ -715,6 +721,9 @@ func (a *App) tick() {
 		in.GameLive = a.currentLiveMatch()
 		in.FPS = a.currentFPS()
 	}
+	if cfg.Screens.Custom.Background == "imagem" {
+		in.CustomBgImage = a.customBackgroundImage()
+	}
 
 	a.devMu.RLock()
 	devices := make([]*device, 0, len(a.order))
@@ -985,10 +994,82 @@ func (a *App) PreviewCustomScreen(w, h int) []byte {
 		in.GameLive = a.currentLiveMatch()
 		in.FPS = a.currentFPS()
 	}
+	if cfg.Screens.Custom.Background == "imagem" {
+		in.CustomBgImage = a.customBackgroundImage()
+	}
 	img := render.Draw(config.ScreenCustom, w, h, in)
 	var buf bytes.Buffer
 	_ = (&png.Encoder{CompressionLevel: png.BestSpeed}).Encode(&buf, img)
 	return buf.Bytes()
+}
+
+// customBgImagePath é onde a imagem de fundo da tela personalizada fica
+// salva (sempre normalizada pra PNG, independente do formato enviado).
+func (a *App) customBgImagePath() string {
+	return filepath.Join(config.Dir(), "personalizada_fundo.png")
+}
+
+// SetCustomBackgroundImage decodifica a imagem enviada pelo painel (PNG,
+// JPEG ou GIF), normaliza pra PNG e salva no disco — usada como fundo da
+// tela personalizada quando Screens.Custom.Background for "imagem". Limita
+// o tamanho decodificado pra não deixar alguém mandar uma imagem gigante.
+func (a *App) SetCustomBackgroundImage(data []byte) error {
+	img, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("imagem inválida: %w", err)
+	}
+	b := img.Bounds()
+	if b.Dx() > 4000 || b.Dy() > 4000 {
+		return errors.New("imagem grande demais (máximo 4000x4000)")
+	}
+	if err := os.MkdirAll(config.Dir(), 0o755); err != nil {
+		return err
+	}
+	f, err := os.Create(a.customBgImagePath())
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if err := (&png.Encoder{CompressionLevel: png.BestCompression}).Encode(f, img); err != nil {
+		return err
+	}
+	a.bgMu.Lock()
+	a.bgImg, a.bgAt = img, time.Time{}
+	a.bgMu.Unlock()
+	return nil
+}
+
+// ClearCustomBackgroundImage apaga a imagem de fundo salva (volta pro tema geral/cor).
+func (a *App) ClearCustomBackgroundImage() {
+	_ = os.Remove(a.customBgImagePath())
+	a.bgMu.Lock()
+	a.bgImg, a.bgAt = nil, time.Time{}
+	a.bgMu.Unlock()
+}
+
+// customBackgroundImage devolve a imagem de fundo cacheada em memória,
+// relendo do disco só se o arquivo tiver mudado (ou na primeira vez).
+func (a *App) customBackgroundImage() image.Image {
+	fi, err := os.Stat(a.customBgImagePath())
+	if err != nil {
+		return nil
+	}
+	a.bgMu.Lock()
+	defer a.bgMu.Unlock()
+	if a.bgImg != nil && a.bgAt.Equal(fi.ModTime()) {
+		return a.bgImg
+	}
+	f, err := os.Open(a.customBgImagePath())
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	img, err := png.Decode(f)
+	if err != nil {
+		return nil
+	}
+	a.bgImg, a.bgAt = img, fi.ModTime()
+	return a.bgImg
 }
 
 // PreviewPNG devolve o frame atual do dispositivo id em PNG (com cache por frame).

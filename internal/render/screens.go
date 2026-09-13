@@ -31,6 +31,9 @@ type Input struct {
 	GameLive LiveMatch
 	// FPS é a taxa de quadros lida do RTSS (RivaTuner), ou 0 se não disponível.
 	FPS float64
+	// CustomBgImage é a imagem de fundo da tela personalizada, já decodificada
+	// (nil se não houver uma configurada, ou se Screens.Custom.Background não for "imagem").
+	CustomBgImage image.Image
 }
 
 // LiveMatch descreve uma partida ao vivo (CS2, Dota 2 ou League of Legends),
