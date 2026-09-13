@@ -265,6 +265,16 @@ select.inp{padding-right:8px}
   <section>
     <div id="updateBox"></div>
     <div id="busyBox"></div>
+    <div class="alert" id="tempHelp" hidden style="margin-bottom:16px">
+      <div style="flex:1">
+        <h3 data-i18n="temp.missing_title">Sem leitura de temperatura</h3>
+        <p data-i18n="temp.missing_text">O Windows não entrega a temperatura da CPU para programas comuns: ela fica em registradores do processador que só o modo kernel lê. O Bifrost resolve isso sozinho, com um driver open-source e assinado. É uma instalação silenciosa, uma janela do Windows pedindo permissão, e nenhum outro programa precisa ficar aberto.</p>
+        <div class="row">
+          <button class="btn primary" id="btnTempEnable" data-i18n="temp.enable">Ativar leitura de temperatura</button>
+        </div>
+        <p class="hint" id="tempHelpStatus" hidden></p>
+      </div>
+    </div>
 
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected="true" data-tab="telas" data-i18n="tab.telas">Telas</button>
@@ -355,16 +365,6 @@ select.inp{padding-right:8px}
           <button class="btn" id="btnMancerRemove" data-i18n="mancer.remove">Remover</button>
         </div>
         <div class="bd" style="display:flex;flex-direction:column;gap:14px">
-          <div class="alert" id="tempHelp" hidden style="margin-bottom:12px">
-            <div style="flex:1">
-              <h3 data-i18n="temp.missing_title">Sem leitura de temperatura</h3>
-              <p data-i18n="temp.missing_text">O Windows não entrega a temperatura da CPU para programas comuns: ela fica em registradores do processador que só o modo kernel lê. O Bifrost resolve isso sozinho, com um driver open-source e assinado. É uma instalação silenciosa, uma janela do Windows pedindo permissão, e nenhum outro programa precisa ficar aberto.</p>
-              <div class="row">
-                <button class="btn primary" id="btnTempEnable" data-i18n="temp.enable">Ativar leitura de temperatura</button>
-              </div>
-              <p class="hint" id="tempHelpStatus" hidden></p>
-            </div>
-          </div>
           <dl class="kv" id="mancerStatusRow">
             <dt data-i18n="conn.state">Estado</dt><dd id="mancerStatus">—</dd>
             <dt data-i18n="mancer.temp">Temperatura enviada</dt><dd id="mancerTemp">—</dd>
@@ -1394,14 +1394,21 @@ function renderState() {
     const temp = s.sistema.cpu_temperatura;
     $("#mancerTemp").textContent = temp >= 0 ? Math.round(temp) + "°C" : "—";
     $("#mancerMacNote").hidden = sysOS !== "darwin";
-    const driverLigado = !!(sensores && sensores.agente_ativo);
-    $("#tempDriverOn").hidden = !driverLigado;
-    $("#tempHelp").hidden = sysOS !== "windows" || driverLigado || temp >= 0;
     $("#mancerChip").hidden = !s.mancer.ativado;
     if (s.mancer.ativado) {
       $("#mancerDot").className = "dot " + (s.mancer.conectado && !s.mancer.erro ? "ok" : "warn");
       $("#mancerChipText").textContent = t("mancer.chip") + ": " + (s.mancer.conectado && !s.mancer.erro ? t("mancer.connected") : t("mancer.disconnected"));
     }
+  }
+
+  // alerta de "sem leitura de temperatura": fica sempre visível na tela
+  // inicial (independe do Mancer estar ligado — a leitura de CPU também
+  // alimenta a tela Sistema e o resto do painel).
+  {
+    const temp = s.sistema.cpu_temperatura;
+    const driverLigado = !!(sensores && sensores.agente_ativo);
+    $("#tempDriverOn").hidden = !driverLigado;
+    $("#tempHelp").hidden = sysOS !== "windows" || driverLigado || temp >= 0;
   }
 
   if (s.dados_de_jogo) {
