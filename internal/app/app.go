@@ -30,6 +30,7 @@ import (
 	"github.com/satty-br/Bifrost-screen/internal/steam"
 	"github.com/satty-br/Bifrost-screen/internal/sysinfo"
 	"github.com/satty-br/Bifrost-screen/internal/update"
+	"github.com/satty-br/Bifrost-screen/internal/valorantapi"
 	"github.com/satty-br/Bifrost-screen/internal/winutil"
 )
 
@@ -172,6 +173,7 @@ type App struct {
 	mancer  *mancer.Monitor
 	gsi     *gsi.Server
 	lol     *lolapi.Poller
+	valo    *valorantapi.Poller
 
 	devMu          sync.RWMutex
 	rootCtx        context.Context
@@ -200,6 +202,7 @@ func New(store *config.Store, cacheDir, version string) *App {
 		mancer:  mancer.NewMonitor(),
 		gsi:     gsi.NovoServer(cfg.GameData.Token),
 		lol:     lolapi.NovoPoller(),
+		valo:    valorantapi.NovoPoller(),
 		devices: map[string]*device{},
 	}
 	store.OnChange(a.onConfig)
@@ -436,17 +439,22 @@ func (a *App) syncGameData(c config.Config) {
 	ctx, cancel := context.WithCancel(a.rootCtx)
 	a.gameDataCancel = cancel
 	a.lol.Start(ctx, time.Second)
+	a.valo.Start(ctx, time.Second)
 }
 
-// currentLiveMatch junta a partida de GSI (CS2/Dota2) com a do LoL — CS2/Dota2
-// tem prioridade se as duas por acaso estiverem ativas (não deveria acontecer
-// na prática, já que são jogos diferentes rodando ao mesmo tempo).
+// currentLiveMatch junta a partida de GSI (CS2/Dota2) com a do LoL e a do
+// Valorant — tem prioridade nessa ordem se mais de uma por acaso estiver
+// ativa (não deveria acontecer na prática, já que são jogos diferentes
+// rodando ao mesmo tempo).
 func (a *App) currentLiveMatch() render.LiveMatch {
 	if m := a.gsi.Current(); m.Ativa() {
 		return liveMatchFromGSI(m)
 	}
 	if m := a.lol.Current(); m.Ativa() {
 		return liveMatchFromLoL(m)
+	}
+	if m := a.valo.Current(); m.Ativa() {
+		return liveMatchFromValorant(m)
 	}
 	return render.LiveMatch{}
 }
@@ -503,6 +511,27 @@ func liveMatchFromLoL(m lolapi.Match) render.LiveMatch {
 			{Label: "K/D/A", Value: fmt.Sprintf("%d/%d/%d", m.Kills, m.Deaths, m.Assists)},
 			{Label: "CS", Value: fmt.Sprintf("%d", m.CreepScore)},
 			{Label: "Ouro", Value: fmt.Sprintf("%d", m.CurrentGold)},
+		},
+	}
+}
+
+// liveMatchFromValorant só tem mapa/modo/agente — a API (não oficial) do
+// Valorant não expõe abates/vida/dinheiro ao vivo como a do LoL.
+func liveMatchFromValorant(m valorantapi.Match) render.LiveMatch {
+	sub := m.Mode
+	if m.Phase == valorantapi.PhasePreGame {
+		sub = "Selecionando agente · " + sub
+	}
+	title := m.Agent
+	if title == "" {
+		title = m.Map
+	}
+	return render.LiveMatch{
+		Active: true, Game: "Valorant",
+		Title: title, Sub: sub,
+		Stats: []render.LiveStat{
+			{Label: "Mapa", Value: m.Map},
+			{Label: "Modo", Value: m.Mode},
 		},
 	}
 }
