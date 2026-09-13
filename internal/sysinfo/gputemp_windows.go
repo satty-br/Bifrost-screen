@@ -112,16 +112,62 @@ func nvmlTemp() (float64, bool) {
 // --- AMD (ADL) ------------------------------------------------------------
 
 const (
-	adlOK             = 0
-	adlOKWarning      = 1
-	adlTempTypeCore   = 1 // ODN_TEMPERATURE_TYPE_CORE
-	adlMaxAdaptadores = 8
+	adlOK              = 0
+	adlOKWarning       = 1
+	adlTempTypeCore    = 1 // ODN_TEMPERATURE_TYPE_CORE
+	adlMaxAdaptadores  = 8
+	adlMaxPath         = 256
+	adlPMLogMaxSensors = 256
 )
+
+// placas RDNA2/RDNA3 (ex.: RX 6000/7000) não respondem mais à Overdrive5/6/N
+// (voltam ADL_ERR_NOT_SUPPORTED) — a AMD trocou pra essa API de "PM Log" a
+// partir do Vega. Índices de github.com/GPUOpen-LibrariesAndSDKs/display-library.
+const (
+	pmlogTemperatureEdge    = 8
+	pmlogTemperatureMem     = 9
+	pmlogTemperatureHotspot = 27
+)
+
+// adlAdapterInfo espelha a struct AdapterInfo do SDK da ADL (adl_structures.h)
+// byte a byte — os índices de adaptador não são necessariamente 0..N-1
+// sequenciais, então precisa ler os índices reais daqui antes de consultar
+// temperatura de cada um.
+type adlAdapterInfo struct {
+	Size           int32
+	AdapterIndex   int32
+	UDID           [adlMaxPath]byte
+	BusNumber      int32
+	DeviceNumber   int32
+	FunctionNumber int32
+	VendorID       int32
+	AdapterName    [adlMaxPath]byte
+	DisplayName    [adlMaxPath]byte
+	Present        int32
+	Exist          int32
+	DriverPath     [adlMaxPath]byte
+	DriverPathExt  [adlMaxPath]byte
+	PNPString      [adlMaxPath]byte
+	OSDisplayIndex int32
+}
+
+type adlSingleSensorData struct {
+	Supported int32
+	Value     int32
+}
+
+// adlPMLogDataOutput espelha ADLPMLogDataOutput (adl_structures.h).
+type adlPMLogDataOutput struct {
+	Size    int32
+	Sensors [adlPMLogMaxSensors]adlSingleSensorData
+}
 
 type adlAPI struct {
 	create      *windows.LazyProc
 	destroy     *windows.LazyProc
 	numAdapters *windows.LazyProc
+	adapterInfo *windows.LazyProc
+	pmLogQuery  *windows.LazyProc
 	odnTemp     *windows.LazyProc
 	od6Temp     *windows.LazyProc
 	od5Temp     *windows.LazyProc
@@ -157,6 +203,8 @@ func loadADL() {
 		create:      dll.NewProc("ADL2_Main_Control_Create"),
 		destroy:     dll.NewProc("ADL2_Main_Control_Destroy"),
 		numAdapters: dll.NewProc("ADL2_Adapter_NumberOfAdapters_Get"),
+		adapterInfo: dll.NewProc("ADL2_Adapter_AdapterInfo_Get"),
+		pmLogQuery:  dll.NewProc("ADL2_New_QueryPMLogData_Get"),
 		odnTemp:     dll.NewProc("ADL2_OverdriveN_Temperature_Get"),
 		od6Temp:     dll.NewProc("ADL2_Overdrive6_Temperature_Get"),
 		od5Temp:     dll.NewProc("ADL2_Overdrive5_Temperature_Get"),
@@ -173,8 +221,9 @@ func loadADL() {
 	adl = a
 }
 
-// adlTemperatura lê a temperatura do núcleo da GPU AMD, tentando as três
-// interfaces (uma placa nova responde à OverdriveN; as antigas, à 6 ou à 5).
+// adlTemp lê a temperatura da GPU AMD: primeiro tenta a API de PM Log
+// (RDNA/RDNA2/RDNA3 e Vega em diante), e só cai pras interfaces antigas
+// (OverdriveN/6/5) se a placa não responder à PM Log (GCN mais velhas).
 func adlTemp() (float64, bool) {
 	adlOnce.Do(loadADL)
 	if !adl.ok {
@@ -188,14 +237,74 @@ func adlTemp() (float64, bool) {
 		var num int32
 		if r, _, _ := adl.numAdapters.Call(adl.ctx, uintptr(unsafe.Pointer(&num))); int32(r) == adlOK && num > 0 {
 			n = int(num)
-			if n > adlMaxAdaptadores {
-				n = adlMaxAdaptadores
-			}
 		}
 	}
-	for i := 0; i < n; i++ {
-		if v, ok := adlTempAdaptador(i); ok {
+	if n <= 0 {
+		return 0, false
+	}
+
+	indices := adlAdapterIndices(n)
+	if len(indices) == 0 {
+		// não deu pra enumerar os adaptadores reais: tenta 0..n-1 do jeito antigo
+		for i := 0; i < n && i < adlMaxAdaptadores; i++ {
+			indices = append(indices, i)
+		}
+	}
+	for _, idx := range indices {
+		if v, ok := adlPMLogTemp(idx); ok {
 			return v, true
+		}
+	}
+	for _, idx := range indices {
+		if v, ok := adlTempAdaptador(idx); ok {
+			return v, true
+		}
+	}
+	return 0, false
+}
+
+// adlAdapterIndices devolve os índices REAIS dos adaptadores presentes, lidos
+// de ADL2_Adapter_AdapterInfo_Get — não dá pra supor que são 0..n-1
+// sequenciais (o Windows numera com buracos, ainda mais com GPU integrada e
+// dedicada ao mesmo tempo).
+func adlAdapterIndices(n int) []int {
+	if adl.adapterInfo.Find() != nil {
+		return nil
+	}
+	size := int(unsafe.Sizeof(adlAdapterInfo{}))
+	buf := make([]byte, size*n)
+	r, _, _ := adl.adapterInfo.Call(adl.ctx, uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)))
+	if int32(r) != adlOK {
+		return nil
+	}
+	var out []int
+	for i := 0; i < n; i++ {
+		info := (*adlAdapterInfo)(unsafe.Pointer(&buf[i*size]))
+		if info.Present != 0 {
+			out = append(out, int(info.AdapterIndex))
+		}
+	}
+	return out
+}
+
+// adlPMLogTemp lê a temperatura pela API de PM Log (a única que placas
+// RDNA/RDNA2/RDNA3 respondem) — prefere a temperatura "edge" (a que os
+// programas de monitoramento chamam de "temperatura da GPU"), com "hotspot"
+// e memória como reserva.
+func adlPMLogTemp(idx int) (float64, bool) {
+	if adl.pmLogQuery.Find() != nil {
+		return 0, false
+	}
+	var out adlPMLogDataOutput
+	out.Size = int32(unsafe.Sizeof(out))
+	r, _, _ := adl.pmLogQuery.Call(adl.ctx, uintptr(idx), uintptr(unsafe.Pointer(&out)))
+	if int32(r) != adlOK {
+		return 0, false
+	}
+	for _, sensor := range []int{pmlogTemperatureEdge, pmlogTemperatureHotspot, pmlogTemperatureMem} {
+		s := out.Sensors[sensor]
+		if s.Supported != 0 && validTemp(float64(s.Value)) {
+			return float64(s.Value), true
 		}
 	}
 	return 0, false
