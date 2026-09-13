@@ -18,7 +18,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configura Go
         uses: actions/setup-go@v7
@@ -69,7 +69,7 @@ jobs:
             --notes "Release automático da versão ${{ inputs.version }}. Veja o histórico de commits para detalhes."
 
       - name: Sobe os binários como artefato do workflow
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bifrost-${{ inputs.version }}
           path: |
@@ -81,7 +81,7 @@ jobs:
             dist/checksums.txt
 
       - name: Abre o PR com a nova versão
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "chore: versão ${{ inputs.version }}"
