@@ -69,7 +69,7 @@ jobs:
             --notes "Release automático da versão ${{ inputs.version }}. Veja o histórico de commits para detalhes."
 
       - name: Sobe os binários como artefato do workflow
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bifrost-${{ inputs.version }}
           path: |
