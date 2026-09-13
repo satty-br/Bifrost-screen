@@ -81,7 +81,7 @@ jobs:
             dist/checksums.txt
 
       - name: Abre o PR com a nova versão
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "chore: versão ${{ inputs.version }}"
