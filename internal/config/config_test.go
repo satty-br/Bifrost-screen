@@ -84,6 +84,9 @@ func TestNormalizeDevices(t *testing.T) {
 	if c.Devices[0].Mode.Fixed != ScreenClock {
 		t.Errorf("tela fixa inválida deveria cair no relógio, veio %q", c.Devices[0].Mode.Fixed)
 	}
+	if c.Devices[0].SimWidth != 320 || c.Devices[0].SimHeight != 480 {
+		t.Errorf("resolução simulada vazia deveria virar 320x480, veio %dx%d", c.Devices[0].SimWidth, c.Devices[0].SimHeight)
+	}
 	ids := map[string]bool{}
 	for _, d := range c.Devices {
 		if ids[d.ID] {

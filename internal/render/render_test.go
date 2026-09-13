@@ -1,6 +1,7 @@
 package render
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -103,3 +104,34 @@ func TestRenderCustomWidgets(t *testing.T) {
 	in.Cfg.Screens.Custom.Widgets = grid
 	Draw(config.ScreenCustom, 320, 480, in)
 }
+
+// TestRenderWideAspectRatios verifica que nenhuma tela quebra (pânico, medida
+// negativa, tamanho de imagem errado) em proporções bem diferentes de
+// 320x480/480x320 — telas mais novas/largas como 1280x800 (5.2") e
+// principalmente 1920x480 (8.8", quase 4:1) ainda não têm um driver de
+// verdade no Bifrost, mas o layout das telas embutidas já precisa aguentar
+// esses tamanhos pro dia em que o protocolo delas for suportado.
+func TestRenderWideAspectRatios(t *testing.T) {
+	out := os.Getenv("BIFROST_PREVIEW_DIR")
+	in := sampleInput()
+	dims := [][2]int{{1280, 800}, {800, 1280}, {1920, 480}, {480, 1920}}
+	for _, s := range config.AllScreens {
+		for _, d := range dims {
+			img := Draw(s, d[0], d[1], in)
+			if img == nil {
+				t.Fatalf("%s %dx%d: imagem nula", s, d[0], d[1])
+			}
+			if img.Bounds().Dx() != d[0] || img.Bounds().Dy() != d[1] {
+				t.Fatalf("%s %dx%d: tamanho errado %v", s, d[0], d[1], img.Bounds())
+			}
+			if out == "" {
+				continue
+			}
+			name := filepath.Join(out, fmt.Sprintf("%s_%dx%d.png", s, d[0], d[1]))
+			f, _ := os.Create(name)
+			png.Encode(f, img)
+			f.Close()
+		}
+	}
+}
+

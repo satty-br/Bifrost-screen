@@ -60,6 +60,17 @@ func TestSimulated(t *testing.T) {
 	}
 }
 
+func TestSimulatedSize(t *testing.T) {
+	s := NewSimulatedSize(1920, 480)
+	w, h := s.Size()
+	if w != 1920 || h != 480 {
+		t.Errorf("Size() = %d,%d, esperava 1920,480", w, h)
+	}
+	if got := NewSimulatedSize(0, 0); got.w != 320 || got.h != 480 {
+		t.Errorf("largura/altura <= 0 deveriam cair no padrão 320x480, veio %dx%d", got.w, got.h)
+	}
+}
+
 func TestDirtyRectEdgeCases(t *testing.T) {
 	if got := DirtyRect(nil, nil); !got.Empty() {
 		t.Errorf("nil,nil deveria ser vazio, veio %v", got)
