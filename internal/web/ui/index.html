@@ -577,6 +577,9 @@ const I18N = {
 "conn.model":{pt:"Modelo",en:"Model",es:"Modelo",ja:"モデル",zh:"型号"},
 "conn.model_a":{pt:"Turing / UsbMonitor 3.5\" (revisão A)",en:"Turing / UsbMonitor 3.5\" (revision A)",es:"Turing / UsbMonitor 3.5\" (revisión A)",ja:"Turing / UsbMonitor 3.5インチ(リビジョンA)",zh:"Turing / UsbMonitor 3.5 英寸(A 版)"},
 "conn.model_sim":{pt:"Simulada (sem tela, só a prévia)",en:"Simulated (no screen, preview only)",es:"Simulada (sin pantalla, solo vista previa)",ja:"シミュレーション(画面なし、プレビューのみ)",zh:"模拟(无屏幕,仅预览)"},
+"conn.sim_resolution":{pt:"Resolução simulada",en:"Simulated resolution",es:"Resolución simulada",ja:"シミュレーション解像度",zh:"模拟分辨率"},
+"conn.sim_resolution_hint":{pt:"Sem hardware ainda para essas telas — isso só deixa testar o layout na prévia do painel.",en:"No real hardware driver for these yet — this only lets you preview the layout in the panel.",es:"Aún no hay controlador para este hardware — esto solo permite probar el diseño en la vista previa.",ja:"この機種のドライバーはまだありません。パネルのプレビューでレイアウトを試せるだけです。",zh:"这些型号目前还没有真实驱动 —— 仅可在面板预览中测试布局。"},
+"conn.sim_custom":{pt:"Personalizada…",en:"Custom…",es:"Personalizada…",ja:"カスタム…",zh:"自定义…"},
 "conn.ports_found":{pt:"Portas encontradas",en:"Ports found",es:"Puertos encontrados",ja:"検出されたポート",zh:"检测到的端口"},
 "conn.no_ports":{pt:"Nenhuma porta COM encontrada.",en:"No COM port found.",es:"No se encontró ningún puerto COM.",ja:"COMポートが見つかりません。",zh:"未找到 COM 端口。"},
 "conn.auto_port":{pt:"Automática (encontra a tela sozinho)",en:"Automatic (finds the screen on its own)",es:"Automático (encuentra la pantalla solo)",ja:"自動(画面を自動的に検出)",zh:"自动(自动查找屏幕)"},
@@ -1348,6 +1351,48 @@ function renderDevices() {
 
     grid.append(portField, revField);
 
+    card.append(head, status, grid);
+
+    if (dev.revisao === "SIMULADO") {
+      const simWrap = document.createElement("div"); simWrap.style.marginTop = "10px";
+      const simLabel = document.createElement("label");
+      simLabel.style.cssText = "font-size:13px;font-weight:600;display:block;margin-bottom:6px";
+      simLabel.textContent = t("conn.sim_resolution");
+      const PRESETS = [
+        [320, 480, "3.5\" — 320×480"], [480, 800, "5\" — 480×800"], [600, 1024, "7\" — 600×1024"],
+        [1280, 800, "5.2\" — 1280×800"], [800, 1280, "5.2\" — 800×1280"],
+        [1920, 480, "8.8\" — 1920×480"], [480, 1920, "8.8\" — 480×1920"],
+      ];
+      const curPreset = PRESETS.find(p => p[0] === dev.largura_simulada && p[1] === dev.altura_simulada);
+      const simSel = document.createElement("select"); simSel.className = "inp"; simSel.style.maxWidth = "220px";
+      PRESETS.forEach(([w, h, label]) => simSel.appendChild(new Option(label, w + "x" + h, false, curPreset && curPreset[0] === w && curPreset[1] === h)));
+      simSel.appendChild(new Option(t("conn.sim_custom"), "custom", false, !curPreset));
+      const wInp = document.createElement("input"); wInp.type = "number"; wInp.className = "inp"; wInp.style.cssText = "max-width:90px;margin-left:8px";
+      wInp.min = 64; wInp.max = 4096; wInp.value = dev.largura_simulada || 320;
+      const xLbl = document.createElement("span"); xLbl.textContent = "×"; xLbl.style.margin = "0 4px";
+      const hInp = document.createElement("input"); hInp.type = "number"; hInp.className = "inp"; hInp.style.maxWidth = "90px";
+      hInp.min = 64; hInp.max = 4096; hInp.value = dev.altura_simulada || 480;
+      const applyCustom = () => {
+        dev.largura_simulada = parseInt(wInp.value, 10) || 320;
+        dev.altura_simulada = parseInt(hInp.value, 10) || 480;
+        scheduleSave(true);
+      };
+      wInp.onchange = applyCustom; hInp.onchange = applyCustom;
+      simSel.onchange = () => {
+        if (simSel.value === "custom") return;
+        const [w, h] = simSel.value.split("x").map(Number);
+        dev.largura_simulada = w; dev.altura_simulada = h;
+        wInp.value = w; hInp.value = h;
+        scheduleSave(true);
+      };
+      const simRow = document.createElement("div"); simRow.className = "row"; simRow.style.alignItems = "center";
+      simRow.append(simSel, wInp, xLbl, hInp);
+      const simHint = document.createElement("p"); simHint.className = "hint"; simHint.style.margin = "6px 0 0";
+      simHint.textContent = t("conn.sim_resolution_hint");
+      simWrap.append(simLabel, simRow, simHint);
+      card.appendChild(simWrap);
+    }
+
     const orientTitle = document.createElement("div");
     orientTitle.style.cssText = "font-size:13px;font-weight:600;margin:14px 0 8px";
     orientTitle.textContent = t("appearance.orientation");
@@ -1375,7 +1420,7 @@ function renderDevices() {
     });
     const modeHint = document.createElement("p"); modeHint.className = "hint"; modeHint.style.margin = "8px 0 0";
     modeHint.textContent = t(MODE_HINT[dev.modo.tipo]);
-    card.append(head, status, grid, orientTitle, orients, modeTitle, seg, modeHint);
+    card.append(orientTitle, orients, modeTitle, seg, modeHint);
 
     if (dev.modo.tipo === "rotacao") {
       const row = document.createElement("div"); row.className = "range"; row.style.marginTop = "10px";

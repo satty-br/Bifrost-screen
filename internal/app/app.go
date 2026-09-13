@@ -585,7 +585,7 @@ func (a *App) connectionLoop(ctx context.Context, d *device) {
 		lang := cfg.ResolvedLanguage()
 		var disp lcd.Display
 		if dc.Revision == "SIMULADO" {
-			disp = lcd.NewSimulated()
+			disp = lcd.NewSimulatedSize(dc.SimWidth, dc.SimHeight)
 		} else {
 			detect := func() (string, error) { return a.claims.claim(d.id) }
 			disp = lcd.NewRevA(dc.Port, lcd.OpenSerial, detect)

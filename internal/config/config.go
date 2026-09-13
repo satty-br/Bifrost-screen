@@ -109,6 +109,12 @@ type DeviceConfig struct {
 	Orientation string     `json:"orientacao"` // ver constantes Orient*
 	Brightness  int        `json:"brilho"`     // 0-100
 	Mode        ModeConfig `json:"modo"`
+	// SimWidth/SimHeight só valem com Revision "SIMULADO": tamanho em pixels da
+	// tela de mentira (sem hardware real), pra testar o layout de painéis que o
+	// Bifrost ainda não sabe falar com o protocolo de verdade (ex.: os modelos
+	// mais largos de 5.2" 1280x800 e 8.8" 1920x480). 0 = usa o padrão 320x480.
+	SimWidth  int `json:"largura_simulada,omitempty"`
+	SimHeight int `json:"altura_simulada,omitempty"`
 }
 
 type ScreensConfig struct {
@@ -297,6 +303,11 @@ func (c *Config) Normalize() {
 		default:
 			dev.Revision = d.Devices[0].Revision
 		}
+		if dev.SimWidth <= 0 || dev.SimHeight <= 0 {
+			dev.SimWidth, dev.SimHeight = 320, 480
+		}
+		dev.SimWidth = clamp(dev.SimWidth, 64, 4096)
+		dev.SimHeight = clamp(dev.SimHeight, 64, 4096)
 		switch dev.Orientation {
 		case OrientPortrait, OrientPortraitReverse, OrientLandscape, OrientLandscapeReverse:
 		default:

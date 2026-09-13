@@ -68,6 +68,17 @@ type Simulated struct {
 
 func NewSimulated() *Simulated { return &Simulated{w: 320, h: 480} }
 
+// NewSimulatedSize cria uma tela de mentira num tamanho arbitrário, usado
+// pra testar o layout de telas em resoluções que o Bifrost ainda não sabe
+// falar com hardware de verdade (ex.: painéis mais largos tipo 1280x800 ou
+// 1920x480). Valores <= 0 caem no tamanho padrão (320x480).
+func NewSimulatedSize(w, h int) *Simulated {
+	if w <= 0 || h <= 0 {
+		return NewSimulated()
+	}
+	return &Simulated{w: w, h: h}
+}
+
 func (s *Simulated) Open() error      { return nil }
 func (s *Simulated) Close() error     { return nil }
 func (s *Simulated) PortName() string { return "simulada" }
