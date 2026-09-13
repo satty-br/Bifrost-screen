@@ -57,7 +57,8 @@ type Poller struct {
 func NovoPoller() *Poller {
 	return &Poller{
 		client: &http.Client{
-			Timeout:   2 * time.Second,
+			Timeout: 2 * time.Second,
+			// codeql[go/disabled-certificate-check]: API Live Client Data da Riot roda em 127.0.0.1 com certificado autoassinado por padrão (documentado oficialmente pela Riot), sem alternativa de validação.
 			Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}, //nolint:gosec // API local da Riot, certificado autoassinado documentado oficialmente
 		},
 	}
