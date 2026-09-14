@@ -2,7 +2,8 @@
 
 # Bifrost
 
-A lightweight panel for the **Turing / UsbMonitor 3.5"** USB screen, replacing the official app:
+A lightweight panel for **Turing / UsbMonitor USB screens** (3.5"/5"/7", including rebrands like
+**图灵智显 TURZX**), replacing the official app:
 shows the **music playing**, the **game open on Steam**, **PC usage** and a **clock**,
 with a control panel so you can choose what shows up and how.
 
@@ -101,8 +102,28 @@ unclaimed screen for it, or pinned to a specific port if you want a stable, pred
 > reboots; leaving them all on "Automatic" still works, but which physical screen ends up as
 > "which" device can shuffle between runs.
 
+## Supported screens
 
-## Languages
+Bifrost talks the **"revision A"** USB-serial protocol used by the original Turing Smart Screen
+3.5" and its many rebrands/clones (UsbMonitor, XuanFang, and others sold under brands like
+**图灵智显 TURZX**). The screen shows up as a plain COM/serial port (CH340 chip), gets
+auto-detected, and Bifrost auto-identifies its exact model from a handshake at startup:
+
+| Size | Resolution | Status |
+|---|---|---|
+| 3.5" | 320×480 | ✅ supported |
+| 5" | 480×800 | ✅ supported (auto-identified via handshake) |
+| 7" | 600×1024 | ✅ supported (auto-identified via handshake) |
+
+Other sizes some of these brands sell — e.g. 2.1"/2.8" round panels, the newer 4.6"/5.2"/8"/
+8.8"/9.2"/12.3" models — use a **different, more complex protocol** (either a different serial
+command set, or, for the newest models, a raw USB/HID protocol instead of a serial port at all).
+Adding those isn't a simple config tweak: it needs a genuinely different driver and, for the
+newest models, a new dependency plus a different USB driver on Windows. They're not supported
+yet — if you have one of these and want to help get it working, please open an issue with your
+exact model, since testing against real hardware is required to get the byte-level protocol right.
+
+
 
 Bifrost's panel and screen also speak **English**, **Português**, **Español**, **日本語 (Japanese)** and **中文 (Mandarin)**.
 By default it auto-detects the language configured in Windows; you can also pick one manually in the **General** tab of the panel.
