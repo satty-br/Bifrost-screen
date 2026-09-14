@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/satty-br/Bifrost-screen/internal/acctelemetry"
 	"github.com/satty-br/Bifrost-screen/internal/config"
 	"github.com/satty-br/Bifrost-screen/internal/ets2telemetry"
 	"github.com/satty-br/Bifrost-screen/internal/f1telemetry"
@@ -180,6 +181,7 @@ type App struct {
 	ets2    *ets2telemetry.Poller
 	valo    *valorantapi.Poller
 	wow     *wowcombatlog.Poller
+	acc     *acctelemetry.Poller
 
 	devMu          sync.RWMutex
 	rootCtx        context.Context
@@ -212,6 +214,7 @@ func New(store *config.Store, cacheDir, version string) *App {
 		ets2:    ets2telemetry.NovoPoller(),
 		valo:    valorantapi.NovoPoller(),
 		wow:     wowcombatlog.NovoPoller(""),
+		acc:     acctelemetry.NovoPoller(),
 		devices: map[string]*device{},
 	}
 	store.OnChange(a.onConfig)
@@ -457,6 +460,7 @@ func (a *App) syncGameData(c config.Config) {
 	a.ets2.Start(ctx, time.Second)
 	a.valo.Start(ctx, time.Second)
 	a.wow.Start(ctx, time.Second)
+	a.acc.Start(ctx, time.Second)
 }
 
 // currentLiveMatch junta a partida de GSI (CS2/Dota2) com a do LoL, a
@@ -482,6 +486,9 @@ func (a *App) currentLiveMatch() render.LiveMatch {
 	}
 	if m := a.wow.Current(); m.Ativa() {
 		return liveMatchFromWoW(m)
+	}
+	if m := a.acc.Current(); m.Ativa() {
+		return liveMatchFromACC(m)
 	}
 	return render.LiveMatch{}
 }
@@ -634,6 +641,36 @@ func liveMatchFromWoW(m wowcombatlog.Snapshot) render.LiveMatch {
 			{Label: "Zona", Value: m.Zone},
 			{Label: "Dificuldade", Value: m.Difficulty},
 			{Label: "Tamanho do grupo", Value: fmt.Sprintf("%d", m.GroupSize)},
+		},
+	}
+}
+
+// liveMatchFromACC monta o resumo mostrado na tela a partir da memória
+// compartilhada do Assetto Corsa/ACC (mesmo layout nos dois jogos).
+func liveMatchFromACC(m acctelemetry.Snapshot) render.LiveMatch {
+	gear := fmt.Sprintf("%d", m.Gear)
+	switch {
+	case m.Gear == 0:
+		gear = "N"
+	case m.Gear < 0:
+		gear = "R"
+	}
+	score := ""
+	if m.Position > 0 {
+		score = fmt.Sprintf("P%d", m.Position)
+	}
+	title := m.Track
+	if title == "" {
+		title = "Na pista"
+	}
+	return render.LiveMatch{
+		Active: true, Game: "Assetto Corsa",
+		Title: title, Sub: m.SessionType, Score: score,
+		Stats: []render.LiveStat{
+			{Label: "Velocidade", Value: fmt.Sprintf("%.0f km/h", m.SpeedKmh)},
+			{Label: "Marcha", Value: gear},
+			{Label: "RPM", Value: fmt.Sprintf("%d", m.RPM)},
+			{Label: "Volta", Value: fmt.Sprintf("%d", m.CompletedLaps)},
 		},
 	}
 }
