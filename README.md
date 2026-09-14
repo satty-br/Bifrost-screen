@@ -36,8 +36,9 @@ Runs on **Windows**, **Linux** and **macOS** — see [Platforms](#platforms) for
   **Game State Integration**, **League of Legends** via Riot's local **Live Client Data API**,
   **Valorant** via the Riot Client's unofficial local API, **F1 22+** via the official **UDP
   telemetry** protocol, **Euro Truck Simulator 2 / American Truck Simulator** via the official
-  **SCS Telemetry** plugin's shared memory, and **World of Warcraft** via the game's own combat
-  log file. With no live match, it falls back to your Steam totals plus real-time **FPS** (read
+  **SCS Telemetry** plugin's shared memory, **World of Warcraft** via the game's own combat
+  log file, and **Assetto Corsa / Assetto Corsa Competizione (ACC)** via Kunos' official shared
+  memory. With no live match, it falls back to your Steam totals plus real-time **FPS** (read
   from RivaTuner Statistics Server, if installed). See [Live match tracking](#live-match-tracking) below.
 - **System**: CPU, GPU, memory, disk, network, and how long the PC has been on.
 - **Clock**: time and date, in 12- or 24-hour format, with or without seconds.
@@ -180,6 +181,10 @@ The **Steam** tab has a **Live matches** toggle (on by default). While it's on:
   encounter (boss) fight: zone, encounter name/difficulty and fight duration — the log doesn't
   expose your own damage/healing without knowing your character name. Bifrost auto-detects the
   default Battle.net install path (retail/Classic/Classic Era).
+- **Assetto Corsa / Assetto Corsa Competizione (ACC)**: reads the official **shared memory**
+  (`Local\acpmf_physics`/`acpmf_graphics`/`acpmf_static`) that both games expose on their own —
+  no plugin or setup needed, just have the game open with the car on track. Shows speed, gear,
+  RPM, track, session type, lap and position. Windows only.
 - **FPS**: while no live match is detected, the Game screen also shows real-time FPS if
   [RivaTuner Statistics Server](https://www.guru3d.com/download/rtss-rivatuner-statistics-server-download/)
   is installed and running (read from its shared memory, the same source every FPS overlay uses).
@@ -244,6 +249,7 @@ This writes `dist/bifrost-windows-amd64.exe`, `dist/bifrost-linux-{amd64,arm64}`
 
 ```
 cmd/bifrost/        program entry point, tray icon, panel window, diagnostics
+internal/acctelemetry/  Assetto Corsa/ACC live data (Kunos' official shared memory)
 internal/app/       decides the current screen, keeps the connection, sends the frames
 internal/ets2telemetry/  Euro Truck Simulator 2/American Truck Simulator live data (SCS Telemetry plugin's shared memory)
 internal/f1telemetry/    F1 22+ live data (official UDP telemetry)
