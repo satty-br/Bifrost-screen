@@ -32,10 +32,13 @@ Runs on **Windows**, **Linux** and **macOS** — see [Platforms](#platforms) for
 - **Game (Steam)**: name, cover art, total playtime, last 2 weeks and current session time,
   read directly from the Steam install on your PC, no API key needed.
 - **Live match tracking** (optional): while you're in an active match, the Game screen shows
-  live stats instead of the usual Steam summary — CS2/CS:GO and Dota 2 via Valve's official
-  **Game State Integration**, and League of Legends via Riot's local **Live Client Data API**.
-  With no live match, it falls back to your Steam totals plus real-time **FPS** (read from
-  RivaTuner Statistics Server, if installed). See [Live match tracking](#live-match-tracking) below.
+  live stats instead of the usual Steam summary — **CS2/CS:GO and Dota 2** via Valve's official
+  **Game State Integration**, **League of Legends** via Riot's local **Live Client Data API**,
+  **Valorant** via the Riot Client's unofficial local API, **F1 22+** via the official **UDP
+  telemetry** protocol, and **Euro Truck Simulator 2 / American Truck Simulator** via the
+  official **SCS Telemetry** plugin's shared memory. With no live match, it falls back to your
+  Steam totals plus real-time **FPS** (read from RivaTuner Statistics Server, if installed).
+  See [Live match tracking](#live-match-tracking) below.
 - **System**: CPU, GPU, memory, disk, network, and how long the PC has been on.
 - **Clock**: time and date, in 12- or 24-hour format, with or without seconds.
 - **Mancer Mystic G1 watercooler display** (optional): sends the live CPU temperature to the small 2-digit HID
@@ -161,14 +164,24 @@ The **Steam** tab has a **Live matches** toggle (on by default). While it's on:
 - **League of Legends**: read from Riot's own local **Live Client Data API**
   (`https://127.0.0.1:2999/liveclientdata/allgamedata`), which the League client exposes by itself
   while a match is in progress — no setup needed.
+- **Valorant**: reads the same unofficial local Riot Client API chain that community overlays use
+  (there's no official Riot API for Valorant like there is for LoL). Only shows map, mode and the
+  chosen agent — no live kills/health/money, since the API doesn't expose those.
+- **F1 22 and newer**: reads the official **UDP Telemetry** broadcast — turn it on in the game's
+  own menu (Settings → Telemetry → UDP on, IP `127.0.0.1`, port `20777`, format matching the
+  game's year) and Bifrost picks it up automatically. Shows speed, gear, RPM, position, current
+  lap and track/session.
+- **Euro Truck Simulator 2 / American Truck Simulator**: reads the shared memory exposed by the
+  free, community-made [SCS Telemetry plugin](https://github.com/RenCloud/scs-sdk-plugin) — copy
+  its DLL into the game's `plugins` folder once. Shows speed, gear, RPM and fuel. Windows only.
 - **FPS**: while no live match is detected, the Game screen also shows real-time FPS if
   [RivaTuner Statistics Server](https://www.guru3d.com/download/rtss-rivatuner-statistics-server-download/)
   is installed and running (read from its shared memory, the same source every FPS overlay uses).
 
 While a match is live, the Game screen replaces the Steam summary with the match's actual status:
-map/hero, round or game time, score, K/D/A, and per-game extras (health/armor/money and bomb state
-for CS2; gold/XP per minute and CS for Dota 2/LoL) — plus CPU, GPU and FPS at the bottom, so you
-can keep an eye on performance without tabbing out.
+map/hero/track, round/lap/game time, score or position, and per-game extras (health/armor/money and
+bomb state for CS2; gold/XP per minute and CS for Dota 2/LoL; speed/gear/RPM for F1 and ETS2/ATS) —
+plus CPU, GPU and FPS at the bottom, so you can keep an eye on performance without tabbing out.
 
 When there's no live match, the Game screen just shows your Steam totals as before.
 
@@ -225,11 +238,14 @@ This writes `dist/bifrost-windows-amd64.exe`, `dist/bifrost-linux-{amd64,arm64}`
 ```
 cmd/bifrost/        program entry point, tray icon, panel window, diagnostics
 internal/app/       decides the current screen, keeps the connection, sends the frames
+internal/ets2telemetry/  Euro Truck Simulator 2/American Truck Simulator live data (SCS Telemetry plugin's shared memory)
+internal/f1telemetry/    F1 22+ live data (official UDP telemetry)
 internal/gsi/       Game State Integration server (CS2/CS:GO and Dota 2 live match data)
 internal/i18n/      translation catalog and OS UI-language detection
 internal/lcd/       screen protocol (revision A) and the serial port (Windows/Linux/macOS)
 internal/lolapi/    League of Legends live match data (Riot's local Live Client Data API)
 internal/render/    screen drawing (portrait and landscape)
+internal/valorantapi/    Valorant live match data (Riot Client's unofficial local API)
 internal/media/     music playing — Windows Media Control (WinRT), MPRIS/D-Bus on Linux, AppleScript (Music.app/Spotify) on macOS
 internal/rtss/      real-time FPS, read from RivaTuner Statistics Server's shared memory
 internal/steam/     Steam: local reading (Windows registry + .vdf files) and Web API (all platforms)
