@@ -34,6 +34,7 @@ import (
 	"github.com/satty-br/Bifrost-screen/internal/update"
 	"github.com/satty-br/Bifrost-screen/internal/valorantapi"
 	"github.com/satty-br/Bifrost-screen/internal/winutil"
+	"github.com/satty-br/Bifrost-screen/internal/wowcombatlog"
 )
 
 // Estados da conexão com a tela.
@@ -178,6 +179,7 @@ type App struct {
 	f1      *f1telemetry.Server
 	ets2    *ets2telemetry.Poller
 	valo    *valorantapi.Poller
+	wow     *wowcombatlog.Poller
 
 	devMu          sync.RWMutex
 	rootCtx        context.Context
@@ -209,6 +211,7 @@ func New(store *config.Store, cacheDir, version string) *App {
 		f1:      f1telemetry.NovoServer(),
 		ets2:    ets2telemetry.NovoPoller(),
 		valo:    valorantapi.NovoPoller(),
+		wow:     wowcombatlog.NovoPoller(""),
 		devices: map[string]*device{},
 	}
 	store.OnChange(a.onConfig)
@@ -453,6 +456,7 @@ func (a *App) syncGameData(c config.Config) {
 	}
 	a.ets2.Start(ctx, time.Second)
 	a.valo.Start(ctx, time.Second)
+	a.wow.Start(ctx, time.Second)
 }
 
 // currentLiveMatch junta a partida de GSI (CS2/Dota2) com a do LoL, a
@@ -475,6 +479,9 @@ func (a *App) currentLiveMatch() render.LiveMatch {
 	}
 	if m := a.valo.Current(); m.Ativa() {
 		return liveMatchFromValorant(m)
+	}
+	if m := a.wow.Current(); m.Ativa() {
+		return liveMatchFromWoW(m)
 	}
 	return render.LiveMatch{}
 }
@@ -612,6 +619,21 @@ func liveMatchFromValorant(m valorantapi.Match) render.LiveMatch {
 		Stats: []render.LiveStat{
 			{Label: "Mapa", Value: m.Map},
 			{Label: "Modo", Value: m.Mode},
+		},
+	}
+}
+
+// liveMatchFromWoW só aparece durante uma luta de encontro (boss pull) — o
+// combat log não expõe dano/cura própria sem saber o nome do personagem, e
+// fora de luta o WoW é mundo aberto sem um "estado de partida" equivalente.
+func liveMatchFromWoW(m wowcombatlog.Snapshot) render.LiveMatch {
+	return render.LiveMatch{
+		Active: true, Game: "World of Warcraft",
+		Title: m.Encounter, Sub: fmt.Sprintf("%s · %s", m.Difficulty, fmtClock(int(time.Since(m.StartedAt).Seconds()))),
+		Stats: []render.LiveStat{
+			{Label: "Zona", Value: m.Zone},
+			{Label: "Dificuldade", Value: m.Difficulty},
+			{Label: "Tamanho do grupo", Value: fmt.Sprintf("%d", m.GroupSize)},
 		},
 	}
 }
