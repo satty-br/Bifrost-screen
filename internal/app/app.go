@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/satty-br/Bifrost-screen/internal/config"
+	"github.com/satty-br/Bifrost-screen/internal/ets2telemetry"
+	"github.com/satty-br/Bifrost-screen/internal/f1telemetry"
 	"github.com/satty-br/Bifrost-screen/internal/gsi"
 	"github.com/satty-br/Bifrost-screen/internal/i18n"
 	"github.com/satty-br/Bifrost-screen/internal/lcd"
@@ -173,6 +175,8 @@ type App struct {
 	mancer  *mancer.Monitor
 	gsi     *gsi.Server
 	lol     *lolapi.Poller
+	f1      *f1telemetry.Server
+	ets2    *ets2telemetry.Poller
 	valo    *valorantapi.Poller
 
 	devMu          sync.RWMutex
@@ -202,6 +206,8 @@ func New(store *config.Store, cacheDir, version string) *App {
 		mancer:  mancer.NewMonitor(),
 		gsi:     gsi.NovoServer(cfg.GameData.Token),
 		lol:     lolapi.NovoPoller(),
+		f1:      f1telemetry.NovoServer(),
+		ets2:    ets2telemetry.NovoPoller(),
 		valo:    valorantapi.NovoPoller(),
 		devices: map[string]*device{},
 	}
@@ -399,7 +405,9 @@ func (a *App) syncMancer(c config.Config) {
 }
 
 // syncGameData liga/desliga o acompanhamento ao vivo de partidas (CS2/Dota2
-// via GSI + League of Legends via a API local da Riot), conforme a
+// via GSI + League of Legends via a API local da Riot + jogos F1 via
+// telemetria UDP oficial + Euro Truck Simulator 2/American Truck Simulator
+// via memória compartilhada do plugin SCS Telemetry), conforme a
 // configuração (chamado no início do Run e a cada mudança de config).
 func (a *App) syncGameData(c config.Config) {
 	a.devMu.Lock()
@@ -412,6 +420,7 @@ func (a *App) syncGameData(c config.Config) {
 		a.gameDataCancel()
 		a.gameDataCancel = nil
 		a.gsi.Stop()
+		a.f1.Stop()
 		if err := gsi.RemoveCS2Config(); err != nil {
 			log.Printf("não consegui remover o .cfg de GSI do CS2: %v", err)
 		}
@@ -439,19 +448,30 @@ func (a *App) syncGameData(c config.Config) {
 	ctx, cancel := context.WithCancel(a.rootCtx)
 	a.gameDataCancel = cancel
 	a.lol.Start(ctx, time.Second)
+	if err := a.f1.Start(f1telemetry.DefaultPort); err != nil {
+		log.Printf("não consegui ligar o listener de telemetria do F1 (porta %d em uso?): %v", f1telemetry.DefaultPort, err)
+	}
+	a.ets2.Start(ctx, time.Second)
 	a.valo.Start(ctx, time.Second)
 }
 
-// currentLiveMatch junta a partida de GSI (CS2/Dota2) com a do LoL e a do
-// Valorant — tem prioridade nessa ordem se mais de uma por acaso estiver
-// ativa (não deveria acontecer na prática, já que são jogos diferentes
-// rodando ao mesmo tempo).
+// currentLiveMatch junta a partida de GSI (CS2/Dota2) com a do LoL, a
+// sessão de F1, a viagem de ETS2/ATS e a partida de Valorant — a ordem só
+// importa se, por acaso, mais de uma estiver ativa ao mesmo tempo (não
+// deveria acontecer na prática, já que são jogos diferentes rodando ao
+// mesmo tempo).
 func (a *App) currentLiveMatch() render.LiveMatch {
 	if m := a.gsi.Current(); m.Ativa() {
 		return liveMatchFromGSI(m)
 	}
 	if m := a.lol.Current(); m.Ativa() {
 		return liveMatchFromLoL(m)
+	}
+	if m := a.f1.Current(); m.Ativa() {
+		return liveMatchFromF1(m)
+	}
+	if m := a.ets2.Current(); m.Ativa() {
+		return liveMatchFromETS2(m)
 	}
 	if m := a.valo.Current(); m.Ativa() {
 		return liveMatchFromValorant(m)
@@ -511,6 +531,66 @@ func liveMatchFromLoL(m lolapi.Match) render.LiveMatch {
 			{Label: "K/D/A", Value: fmt.Sprintf("%d/%d/%d", m.Kills, m.Deaths, m.Assists)},
 			{Label: "CS", Value: fmt.Sprintf("%d", m.CreepScore)},
 			{Label: "Ouro", Value: fmt.Sprintf("%d", m.CurrentGold)},
+		},
+	}
+}
+
+// liveMatchFromF1 monta o resumo mostrado na tela a partir da telemetria UDP
+// do F1 (não tem K/D/A: é corrida, não FPS/MOBA).
+func liveMatchFromF1(m f1telemetry.Snapshot) render.LiveMatch {
+	sub := m.SessionType
+	if m.Sector > 0 {
+		sub = fmt.Sprintf("%s · Volta %d · S%d", sub, m.CurrentLapNum, m.Sector)
+	}
+	gear := fmt.Sprintf("%d", m.Gear)
+	switch {
+	case m.Gear == 0:
+		gear = "N"
+	case m.Gear < 0:
+		gear = "R"
+	}
+	score := ""
+	if m.CarPosition > 0 {
+		score = fmt.Sprintf("P%d", m.CarPosition)
+	}
+	return render.LiveMatch{
+		Active: true, Game: "F1",
+		Title: m.Track, Sub: sub, Score: score,
+		Stats: []render.LiveStat{
+			{Label: "Velocidade", Value: fmt.Sprintf("%d km/h", m.Speed)},
+			{Label: "Marcha", Value: gear},
+			{Label: "RPM", Value: fmt.Sprintf("%d", m.EngineRPM)},
+			{Label: "Volta atual", Value: fmtClock(int(m.CurrentLapTimeMS / 1000))},
+		},
+	}
+}
+
+// liveMatchFromETS2 monta o resumo mostrado na tela a partir da memória
+// compartilhada do ETS2/ATS (velocidade, marcha, RPM e combustível).
+func liveMatchFromETS2(m ets2telemetry.Snapshot) render.LiveMatch {
+	gear := fmt.Sprintf("%d", m.Gear)
+	switch {
+	case m.Gear == 0:
+		gear = "N"
+	case m.Gear < 0:
+		gear = "R"
+	}
+	fuel := fmt.Sprintf("%.0f L", m.FuelLiters)
+	if m.FuelPct >= 0 {
+		fuel = fmt.Sprintf("%.0f%% (%.0f km)", m.FuelPct, m.FuelRangeKM)
+	}
+	sub := ""
+	if m.SpeedLimitKMH > 0 {
+		sub = fmt.Sprintf("Limite %.0f km/h", m.SpeedLimitKMH)
+	}
+	return render.LiveMatch{
+		Active: true, Game: m.Game,
+		Title: "Na estrada", Sub: sub,
+		Stats: []render.LiveStat{
+			{Label: "Velocidade", Value: fmt.Sprintf("%.0f km/h", m.SpeedKMH)},
+			{Label: "Marcha", Value: gear},
+			{Label: "RPM", Value: fmt.Sprintf("%d", m.EngineRPM)},
+			{Label: "Combustível", Value: fuel},
 		},
 	}
 }
