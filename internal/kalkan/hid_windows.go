@@ -206,7 +206,7 @@ type windowsTransport struct {
 
 func (t *windowsTransport) PayloadSize() int {
 	if t.outLen <= 1 {
-		return 64
+		return reportSize
 	}
 	return t.outLen - 1 // desconta o byte do Report ID
 }
@@ -288,7 +288,7 @@ func OpenPath(path string) (Transport, error) {
 	if err != nil {
 		return nil, fmt.Errorf("abrindo %s: %w (o app do fabricante está aberto?)", path, err)
 	}
-	t := &windowsTransport{h: h, outLen: 65, inLen: 65}
+	t := &windowsTransport{h: h, outLen: reportSize + 1, inLen: reportSize + 1}
 	var preparsed uintptr
 	if ret, _, _ := procHidDGetPreparsedData.Call(uintptr(h), uintptr(unsafe.Pointer(&preparsed))); ret != 0 && preparsed != 0 {
 		defer procHidDFreePreparsedData.Call(preparsed)

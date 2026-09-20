@@ -26,6 +26,11 @@ import "errors"
 // VendorID é o fabricante do controlador usado por toda a família (GAMDIAS).
 const VendorID uint16 = 0x1B80
 
+// reportSize é quantos bytes de dado cabem num relatório HID desta família.
+// O software do fabricante chama seu transporte de "HidTransport64X", e os
+// aparelhos declaram 64 bytes de payload (65 com o byte do Report ID).
+const reportSize = 64
+
 // ErrNotFound é devolvido quando nenhum painel conhecido está conectado.
 var ErrNotFound = errors.New("nenhuma tela Kalkan/GAMDIAS encontrada")
 
