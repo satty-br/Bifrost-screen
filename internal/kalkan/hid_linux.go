@@ -68,8 +68,8 @@ func lerUEvent(nome string) (uint16, uint16, error) {
 		if len(partes) != 3 {
 			return 0, 0, fmt.Errorf("HID_ID inesperado: %q", linha)
 		}
-		vid, err1 := strconv.ParseUint(partes[1], 16, 32)
-		pid, err2 := strconv.ParseUint(partes[2], 16, 32)
+		vid, err1 := strconv.ParseUint(partes[1], 16, 16)
+		pid, err2 := strconv.ParseUint(partes[2], 16, 16)
 		if err1 != nil || err2 != nil {
 			return 0, 0, fmt.Errorf("HID_ID ilegível: %q", linha)
 		}
