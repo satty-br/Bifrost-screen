@@ -236,6 +236,24 @@ protocol from [dsmlucas/mancer-g1-cpu-temp-display](https://github.com/dsmlucas/
   granting your user access to the device, similar to the reference project's `99-mancer-watercooler.rules`.
 - **macOS**: not supported — would require IOKit's HID Manager, which needs CGO.
 
+### Water cooler LCDs (Kalkan Aura LCD / GAMDIAS ZeusCast) — experimental
+
+Several AIO coolers ship a small colour LCD on the pump block: the **Kalkan Aura LCD 240/360**
+sold in Brazil, and the GAMDIAS **CHIONE**, **AURA** and **ATLAS** lines it is rebadged from.
+Bifrost can drive that screen directly, as one more rotating screen — same content, same
+screen order, same preview in the panel.
+
+It is **auto-detected over USB** by its VID/PID (`0x1B80`, one HID interface of a composite
+device): plug it in and a card for it appears in the **Connection** tab, with its own
+brightness and orientation. Nothing to configure, and nothing shows up if you don't have one.
+
+> **This is not verified on hardware yet.** The protocol was reverse-engineered from the
+> vendor's own software (GAMDIAS ZeusCast, which Kalkan ships as "KK Aura") without the cooler
+> in hand — see [docs/kalkan-aura-lcd.md](docs/kalkan-aura-lcd.md) for the full write-up, the
+> device table and what is still unconfirmed. If you own one of these coolers, running
+> `kalkan-probe` (built from `tools/kalkanprobe`) and reporting what it prints is the single
+> most useful thing you can do for this feature.
+
 ## Where data is stored
 
 `%APPDATA%\Bifrost\` on Windows, `~/.config/Bifrost/` on Linux, `~/Library/Application Support/Bifrost/`

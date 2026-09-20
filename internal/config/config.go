@@ -85,6 +85,13 @@ const (
 	OrientLandscapeReverse = "paisagem_invertida"
 )
 
+// Revisões de tela aceitas em DeviceConfig.Revision.
+const (
+	RevA         = "A"        // Turing/UsbMonitor/XuanFang 3,5" por porta serial
+	RevSimulated = "SIMULADO" // tela de mentira, só pra ver o layout no painel
+	RevKalkan    = "KALKAN"   // painel HID dos water coolers GAMDIAS/Kalkan
+)
+
 type Config struct {
 	Devices  []DeviceConfig `json:"dispositivos"`
 	Screens  ScreensConfig  `json:"telas"`
@@ -92,6 +99,7 @@ type Config struct {
 	Steam    SteamConfig    `json:"steam"`
 	General  GeneralConfig  `json:"geral"`
 	Mancer   MancerConfig   `json:"mancer"`
+	Kalkan   KalkanConfig   `json:"kalkan"`
 	GameData GameDataConfig `json:"dados_de_jogo"`
 }
 
@@ -229,6 +237,19 @@ type MancerConfig struct {
 	Enabled bool `json:"ativado"`
 }
 
+// KalkanConfig controla a tela LCD embutida no bloco d'água dos water coolers
+// da família GAMDIAS ZeusCast (vendidos no Brasil como Kalkan Aura LCD).
+// Assim como o mostrador Mancer, o painel é achado sozinho pelo VID/PID do
+// HID — não há porta pra escolher, e ele só aparece no painel de controle
+// quando está conectado. Diferente do Mancer, aqui é uma tela de verdade, com
+// as mesmas telas e a mesma rotação das telas USB de 3,5".
+type KalkanConfig struct {
+	Enabled     bool       `json:"ativado"`
+	Brightness  int        `json:"brilho"`     // 0-100
+	Orientation string     `json:"orientacao"` // ver constantes Orient*
+	Mode        ModeConfig `json:"modo"`
+}
+
 // GameDataConfig liga/desliga o acompanhamento ao vivo de partidas (CS2,
 // Dota 2 via Game State Integration da Valve, e League of Legends via a API
 // local da Riot). O Token é gerado uma vez sozinho e mantido estável entre
@@ -254,9 +275,13 @@ func Default() Config {
 			AccentMusic: "#2dd4bf", AccentGame: "#66c0f4", AccentSystem: "#f59e0b", AccentClock: "#a5b4fc", AccentCustom: "#f472b6",
 			Background: "gradiente", BgColor: "#101116",
 		},
-		Steam:    SteamConfig{Enabled: true, Source: "local", StatusSeconds: 15, LibrarySeconds: 300},
-		General:  GeneralConfig{Autostart: false, OpenPanel: true, RefreshMillis: 1000, WebPort: 47017, Language: "auto", AutoUpdate: true},
-		Mancer:   MancerConfig{Enabled: true},
+		Steam:   SteamConfig{Enabled: true, Source: "local", StatusSeconds: 15, LibrarySeconds: 300},
+		General: GeneralConfig{Autostart: false, OpenPanel: true, RefreshMillis: 1000, WebPort: 47017, Language: "auto", AutoUpdate: true},
+		Mancer:  MancerConfig{Enabled: true},
+		Kalkan: KalkanConfig{
+			Enabled: true, Brightness: 80, Orientation: OrientPortrait,
+			Mode: ModeConfig{Type: ModeAuto, RotateSeconds: 10, Fixed: ScreenClock},
+		},
 		GameData: GameDataConfig{Enabled: true},
 	}
 }
@@ -298,7 +323,7 @@ func (c *Config) Normalize() {
 			dev.Port = "AUTO"
 		}
 		switch strings.ToUpper(dev.Revision) {
-		case "A", "SIMULADO":
+		case RevA, RevSimulated, RevKalkan:
 			dev.Revision = strings.ToUpper(dev.Revision)
 		default:
 			dev.Revision = d.Devices[0].Revision
@@ -327,6 +352,22 @@ func (c *Config) Normalize() {
 	}
 	if len(c.Devices) == 0 {
 		c.Devices = []DeviceConfig{defaultDevice("principal")}
+	}
+
+	c.Kalkan.Brightness = clamp(c.Kalkan.Brightness, 0, 100)
+	switch c.Kalkan.Orientation {
+	case OrientPortrait, OrientPortraitReverse, OrientLandscape, OrientLandscapeReverse:
+	default:
+		c.Kalkan.Orientation = d.Kalkan.Orientation
+	}
+	switch c.Kalkan.Mode.Type {
+	case ModeAuto, ModeRotate, ModeFixed:
+	default:
+		c.Kalkan.Mode.Type = ModeAuto
+	}
+	c.Kalkan.Mode.RotateSeconds = clamp(c.Kalkan.Mode.RotateSeconds, 3, 600)
+	if !isKnown(c.Kalkan.Mode.Fixed) {
+		c.Kalkan.Mode.Fixed = ScreenClock
 	}
 
 	// Ordem: mantém as conhecidas, sem repetição, e completa com as que faltarem.

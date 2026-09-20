@@ -24,6 +24,7 @@ import (
 	"github.com/satty-br/Bifrost-screen/internal/f1telemetry"
 	"github.com/satty-br/Bifrost-screen/internal/gsi"
 	"github.com/satty-br/Bifrost-screen/internal/i18n"
+	"github.com/satty-br/Bifrost-screen/internal/kalkan"
 	"github.com/satty-br/Bifrost-screen/internal/lcd"
 	"github.com/satty-br/Bifrost-screen/internal/lolapi"
 	"github.com/satty-br/Bifrost-screen/internal/mancer"
@@ -195,27 +196,35 @@ type App struct {
 	bgMu  sync.Mutex
 	bgImg image.Image // cache da imagem de fundo da tela personalizada
 	bgAt  time.Time   // data de modificação do arquivo quando bgImg foi lida
+
+	kalkanScan    func() (kalkan.Product, bool) // varredura do painel do water cooler (trocada nos testes)
+	kalkanMu      sync.Mutex
+	kalkanPresent bool           // último resultado da varredura HID
+	kalkanModel   kalkan.Product // modelo achado na última varredura
+	kalkanAt      time.Time      // quando essa varredura foi feita
+	kalkanWired   bool           // se o dispositivo sintético está na lista agora
 }
 
 func New(store *config.Store, cacheDir, version string) *App {
 	cfg := store.Get()
 	a := &App{
-		Version: version,
-		store:   store,
-		media:   &media.Reader{},
-		steam:   steam.New(cacheDir),
-		sys:     &sysinfo.Sampler{},
-		updater: update.NewChecker(version),
-		claims:  newPortClaims(),
-		mancer:  mancer.NewMonitor(),
-		gsi:     gsi.NovoServer(cfg.GameData.Token),
-		lol:     lolapi.NovoPoller(),
-		f1:      f1telemetry.NovoServer(),
-		ets2:    ets2telemetry.NovoPoller(),
-		valo:    valorantapi.NovoPoller(),
-		wow:     wowcombatlog.NovoPoller(""),
-		acc:     acctelemetry.NovoPoller(),
-		devices: map[string]*device{},
+		Version:    version,
+		store:      store,
+		media:      &media.Reader{},
+		steam:      steam.New(cacheDir),
+		sys:        &sysinfo.Sampler{},
+		updater:    update.NewChecker(version),
+		claims:     newPortClaims(),
+		mancer:     mancer.NewMonitor(),
+		gsi:        gsi.NovoServer(cfg.GameData.Token),
+		lol:        lolapi.NovoPoller(),
+		f1:         f1telemetry.NovoServer(),
+		ets2:       ets2telemetry.NovoPoller(),
+		valo:       valorantapi.NovoPoller(),
+		wow:        wowcombatlog.NovoPoller(""),
+		acc:        acctelemetry.NovoPoller(),
+		devices:    map[string]*device{},
+		kalkanScan: kalkan.Detect,
 	}
 	store.OnChange(a.onConfig)
 	return a
@@ -247,7 +256,7 @@ func (a *App) Run(ctx context.Context) {
 	a.sys.Start(time.Second)
 	a.steam.Configure(steamSettings(cfg))
 	go a.steam.Run(ctx)
-	a.syncDevices(ctx, cfg.Devices)
+	a.syncDevices(ctx, a.deviceList(cfg))
 	if cfg.General.AutoUpdate {
 		a.updater.Start(ctx, 6*time.Hour)
 	}
@@ -309,6 +318,74 @@ func (a *App) syncDevices(ctx context.Context, cfgs []config.DeviceConfig) {
 	}
 }
 
+// kalkanDeviceID é o ID do dispositivo sintético do painel do water cooler.
+// Ele não fica salvo no config.json: aparece sozinho quando o painel está
+// conectado e some quando não está, igual ao mostrador Mancer.
+const kalkanDeviceID = "kalkan"
+
+// deviceList devolve os dispositivos configurados mais, quando o painel do
+// water cooler Kalkan/GAMDIAS está ligado e habilitado, um dispositivo
+// sintético pra ele. Assim o painel entra no mesmo maquinário das telas USB:
+// mesma rotação de telas, mesma prévia, mesmo status.
+func (a *App) deviceList(c config.Config) []config.DeviceConfig {
+	out := c.Devices
+	if !c.Kalkan.Enabled || !a.kalkanPresente() {
+		return out
+	}
+	for _, dc := range out {
+		if dc.ID == kalkanDeviceID {
+			return out // o usuário já tem um dispositivo com esse ID; não mexemos
+		}
+	}
+	return append(append([]config.DeviceConfig(nil), out...), config.DeviceConfig{
+		ID:          kalkanDeviceID,
+		Name:        a.kalkanNome(),
+		Port:        "AUTO",
+		Revision:    config.RevKalkan,
+		Orientation: c.Kalkan.Orientation,
+		Brightness:  c.Kalkan.Brightness,
+		Mode:        c.Kalkan.Mode,
+	})
+}
+
+// kalkanNome é o rótulo que aparece no painel de controle: o modelo detectado
+// e a resolução dele.
+func (a *App) kalkanNome() string {
+	a.kalkanMu.Lock()
+	p := a.kalkanModel
+	a.kalkanMu.Unlock()
+	if p.Name == "" {
+		return "Kalkan / GAMDIAS LCD"
+	}
+	return fmt.Sprintf("%s · %dx%d", p.Name, p.Width, p.Height)
+}
+
+// kalkanPresente diz se há um painel conhecido plugado, com cache curto: a
+// varredura HID abre um handle por dispositivo do PC, e não é coisa pra fazer
+// a cada quadro. Se o painel já está conectado, nem varre.
+func (a *App) kalkanPresente() bool {
+	if d := a.deviceByID(kalkanDeviceID); d != nil {
+		d.mu.Lock()
+		conectado := d.display != nil
+		d.mu.Unlock()
+		if conectado {
+			return true
+		}
+	}
+	a.kalkanMu.Lock()
+	defer a.kalkanMu.Unlock()
+	if !a.kalkanAt.IsZero() && time.Since(a.kalkanAt) < 5*time.Second {
+		return a.kalkanPresent
+	}
+	a.kalkanAt = time.Now()
+	if a.kalkanScan != nil {
+		a.kalkanModel, a.kalkanPresent = a.kalkanScan()
+	} else {
+		a.kalkanModel, a.kalkanPresent = kalkan.Product{}, false
+	}
+	return a.kalkanPresent
+}
+
 // deviceByID devolve o estado ao vivo de um dispositivo (ou nil se não existir).
 func (a *App) deviceByID(id string) *device {
 	a.devMu.RLock()
@@ -339,11 +416,11 @@ func (a *App) onConfig(c config.Config) {
 	root := a.rootCtx
 	a.devMu.RUnlock()
 	if root != nil {
-		a.syncDevices(root, c.Devices)
+		a.syncDevices(root, a.deviceList(c))
 	}
 
 	lang := c.ResolvedLanguage()
-	for _, dc := range c.Devices {
+	for _, dc := range a.deviceList(c) {
 		d := a.deviceByID(dc.ID)
 		if d == nil {
 			continue
@@ -746,15 +823,18 @@ func (a *App) connectionLoop(ctx context.Context, d *device) {
 	defer a.claims.release(d.id)
 	for ctx.Err() == nil {
 		cfg := a.store.Get()
-		dc, ok := deviceConfig(cfg.Devices, d.id)
+		dc, ok := deviceConfig(a.deviceList(cfg), d.id)
 		if !ok {
 			return // dispositivo foi removido da configuração
 		}
 		lang := cfg.ResolvedLanguage()
 		var disp lcd.Display
-		if dc.Revision == "SIMULADO" {
+		switch dc.Revision {
+		case config.RevSimulated:
 			disp = lcd.NewSimulatedSize(dc.SimWidth, dc.SimHeight)
-		} else {
+		case config.RevKalkan:
+			disp = kalkan.NewDisplay()
+		default:
 			detect := func() (string, error) { return a.claims.claim(d.id) }
 			disp = lcd.NewRevA(dc.Port, lcd.OpenSerial, detect)
 		}
@@ -781,7 +861,7 @@ func (a *App) connectionLoop(ctx context.Context, d *device) {
 		d.applied = dc
 		d.conflicts = nil
 		d.mu.Unlock()
-		if dc.Revision == "SIMULADO" {
+		if dc.Revision == config.RevSimulated {
 			a.setStatus(d, StatusSimulated, i18n.T(lang, "app.simulated"))
 		} else {
 			a.setStatus(d, StatusConnected, i18n.T(lang, "app.connected", disp.PortName()))
@@ -876,7 +956,29 @@ func (a *App) choose(d *device, now time.Time, mode config.ModeConfig, active []
 	return active[0]
 }
 
+// syncKalkan acompanha o painel do water cooler aparecendo e sumindo: ele é
+// detectado sozinho, então a lista de dispositivos muda sem o usuário mexer
+// em nada. Chamado a cada quadro; a varredura em si tem cache de 5s.
+func (a *App) syncKalkan() {
+	cfg := a.store.Get()
+	quer := cfg.Kalkan.Enabled && a.kalkanPresente()
+	a.kalkanMu.Lock()
+	mudou := quer != a.kalkanWired
+	a.kalkanWired = quer
+	a.kalkanMu.Unlock()
+	if !mudou {
+		return
+	}
+	a.devMu.RLock()
+	root := a.rootCtx
+	a.devMu.RUnlock()
+	if root != nil {
+		a.syncDevices(root, a.deviceList(cfg))
+	}
+}
+
 func (a *App) tick() {
+	a.syncKalkan()
 	now := time.Now()
 	cfg := a.store.Get()
 	m := a.media.Get()
@@ -903,7 +1005,7 @@ func (a *App) tick() {
 	a.devMu.RUnlock()
 
 	for _, d := range devices {
-		dc, ok := deviceConfig(cfg.Devices, d.id)
+		dc, ok := deviceConfig(a.deviceList(cfg), d.id)
 		if !ok {
 			continue
 		}
@@ -982,7 +1084,7 @@ func (a *App) Next(id string, delta int) {
 		return
 	}
 	cfg := a.store.Get()
-	dc, ok := deviceConfig(cfg.Devices, id)
+	dc, ok := deviceConfig(a.deviceList(cfg), id)
 	if !ok {
 		return
 	}
@@ -1072,7 +1174,7 @@ func (a *App) State() State {
 	a.devMu.RUnlock()
 
 	names := map[string]string{}
-	for _, dc := range cfg.Devices {
+	for _, dc := range a.deviceList(cfg) {
 		names[dc.ID] = dc.Name
 	}
 
