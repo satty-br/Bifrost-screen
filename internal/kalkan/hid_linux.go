@@ -82,9 +82,15 @@ type linuxTransport struct {
 	f *os.File
 }
 
-func (t *linuxTransport) PayloadSize() int { return 64 }
+func (t *linuxTransport) PayloadSize() int { return reportSize }
 
 func (t *linuxTransport) WriteReport(p []byte) error {
+	// Relatório maior que o da família é erro de quem chamou. Comparar com
+	// uma constante também deixa explícito que o len(p)+1 abaixo não tem
+	// como estourar — foi isso que o CodeQL apontou.
+	if len(p) > reportSize {
+		return fmt.Errorf("relatório de %d bytes: o máximo desta família é %d", len(p), reportSize)
+	}
 	// hidraw espera o Report ID como primeiro byte; 0 quando o dispositivo
 	// não usa relatórios numerados.
 	buf := make([]byte, len(p)+1)
