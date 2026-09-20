@@ -382,12 +382,55 @@ select.inp{padding-right:8px}
         </div>
       </section>
 
+      <section class="card" id="kalkanCard" hidden>
+        <div class="hd">
+          <h2 data-i18n="kalkan.title">Tela do water cooler (Kalkan / GAMDIAS)</h2>
+          <span class="spacer"></span>
+          <button class="btn" id="btnKalkanRemove" data-i18n="mancer.remove">Remover</button>
+        </div>
+        <div class="bd" style="display:flex;flex-direction:column;gap:14px">
+          <div class="alert">
+            <div style="flex:1">
+              <h3 data-i18n="kalkan.untested_title">Suporte experimental</h3>
+              <p data-i18n="kalkan.untested_text">Este painel foi implementado a partir do software do fabricante, sem o aparelho em mãos. Se algo aparecer errado (cores trocadas, imagem girada, tela parada), conte na issue do projeto — é exatamente esse retorno que falta pra fechar o suporte.</p>
+            </div>
+          </div>
+          <dl class="kv">
+            <dt data-i18n="conn.state">Estado</dt><dd id="kalkanStatus">—</dd>
+            <dt data-i18n="kalkan.model">Modelo</dt><dd id="kalkanModel">—</dd>
+          </dl>
+          <div class="grid2">
+            <div class="field">
+              <label for="kalkanBrightness" data-i18n="side.brightness">Brilho</label>
+              <div class="row">
+                <input type="range" id="kalkanBrightness" min="0" max="100" step="1" data-path="kalkan.brilho" data-type="int" style="flex:1">
+                <span id="kalkanBrightnessOut" class="muted" style="min-width:46px;text-align:right">80%</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="kalkanOrient" data-i18n="appearance.orientation">Orientação</label>
+              <select class="inp" id="kalkanOrient" data-path="kalkan.orientacao">
+                <option value="retrato" data-i18n="orient.portrait">Retrato</option>
+                <option value="retrato_invertido" data-i18n="orient.portrait_rev">Retrato invertido</option>
+                <option value="paisagem" data-i18n="orient.landscape">Paisagem</option>
+                <option value="paisagem_invertida" data-i18n="orient.landscape_rev">Paisagem invertida</option>
+              </select>
+            </div>
+          </div>
+          <p class="hint" data-i18n="kalkan.screens_hint">As telas que aparecem aqui são as mesmas da lista "O que exibir", com a rotação própria configurada na aba Telas.</p>
+        </div>
+      </section>
+
       <section class="card" id="addDeviceCard">
         <div class="hd"><h2 data-i18n="mancer.add_section">Adicionar dispositivo</h2></div>
         <div class="bd" style="display:flex;flex-direction:column;gap:10px">
           <div class="toggle-row" style="border-bottom:0;padding:0" id="addMancerRow">
             <div><div class="t" data-i18n="mancer.title">Mostrador Mancer Mystic G1</div><div class="d" data-i18n="mancer.enable_desc">Manda a temperatura pro mostrador de 2 dígitos do bloco d'água Mancer Mystic G1 (detecção automática por USB).</div></div>
             <button class="btn" id="btnMancerAdd" data-i18n="mancer.add">+ Adicionar</button>
+          </div>
+          <div class="toggle-row" style="border-bottom:0;padding:0" id="addKalkanRow">
+            <div><div class="t" data-i18n="kalkan.title">Tela do water cooler (Kalkan / GAMDIAS)</div><div class="d" data-i18n="kalkan.enable_desc">Usa a telinha do bloco d'água dos water coolers GAMDIAS ZeusCast (vendidos como Kalkan Aura LCD) como mais uma tela do Bifrost. Detecção automática por USB.</div></div>
+            <button class="btn" id="btnKalkanAdd" data-i18n="mancer.add">+ Adicionar</button>
           </div>
           <p class="hint" id="noDevicesToAdd" hidden data-i18n="conn.no_devices_to_add">Todos os dispositivos suportados já foram adicionados.</p>
         </div>
@@ -607,6 +650,13 @@ const I18N = {
 "mancer.off":{pt:"Desligado",en:"Off",es:"Apagado",ja:"オフ",zh:"已关闭"},
 "mancer.remove":{pt:"Remover",en:"Remove",es:"Quitar",ja:"削除",zh:"移除"},
 "mancer.add":{pt:"+ Adicionar",en:"+ Add",es:"+ Añadir",ja:"+ 追加",zh:"+ 添加"},
+"kalkan.title":{pt:"Tela do water cooler (Kalkan / GAMDIAS)",en:"Water cooler screen (Kalkan / GAMDIAS)",es:"Pantalla del water cooler (Kalkan / GAMDIAS)",ja:"水冷クーラーの画面 (Kalkan / GAMDIAS)",zh:"水冷散热器屏幕 (Kalkan / GAMDIAS)"},
+"kalkan.model":{pt:"Modelo",en:"Model",es:"Modelo",ja:"モデル",zh:"型号"},
+"kalkan.untested_title":{pt:"Suporte experimental",en:"Experimental support",es:"Soporte experimental",ja:"実験的サポート",zh:"实验性支持"},
+"kalkan.untested_text":{pt:"Este painel foi implementado a partir do software do fabricante, sem o aparelho em mãos. Se algo aparecer errado (cores trocadas, imagem girada, tela parada), conte na issue do projeto — é exatamente esse retorno que falta pra fechar o suporte.",en:"This panel was implemented from the vendor's software, without the hardware in hand. If anything looks wrong (swapped colours, rotated image, frozen screen), please say so in the project issue — that feedback is exactly what is missing to finish the support.",es:"Este panel se implementó a partir del software del fabricante, sin tener el aparato. Si algo se ve mal (colores cambiados, imagen girada, pantalla congelada), cuéntalo en la issue del proyecto.",ja:"このパネルはメーカーのソフトウェアから実装したもので、実機での確認はまだです。表示がおかしい場合はプロジェクトの issue で知らせてください。",zh:"此面板是根据厂商软件实现的，尚未在真实硬件上验证。如果显示异常，请在项目 issue 中反馈。"},
+"kalkan.screens_hint":{pt:"As telas que aparecem aqui são as mesmas da lista \"O que exibir\", com a rotação própria configurada na aba Telas.",en:"It shows the same screens as the \"What to show\" list, with its own rotation configured in the Screens tab.",es:"Muestra las mismas pantallas de la lista \"Qué mostrar\", con su propia rotación en la pestaña Pantallas.",ja:"「表示する内容」と同じ画面を、画面タブで設定した独自のローテーションで表示します。",zh:"显示与“显示内容”列表相同的画面，轮换设置见“屏幕”选项卡。"},
+"kalkan.enable_desc":{pt:"Usa a telinha do bloco d'água dos water coolers GAMDIAS ZeusCast (vendidos como Kalkan Aura LCD) como mais uma tela do Bifrost. Detecção automática por USB.",en:"Use the little screen on the pump of GAMDIAS ZeusCast water coolers (sold as Kalkan Aura LCD) as another Bifrost screen. Auto-detected over USB.",es:"Usa la pantallita del bloque de agua de los water coolers GAMDIAS ZeusCast (vendidos como Kalkan Aura LCD) como otra pantalla de Bifrost. Detección automática por USB.",ja:"GAMDIAS ZeusCast 水冷クーラー (Kalkan Aura LCD として販売) のポンプ上の小型画面を Bifrost の画面として使います。USB で自動検出されます。",zh:"把 GAMDIAS ZeusCast 水冷（即 Kalkan Aura LCD）水泵上的小屏幕当作 Bifrost 的另一块屏幕。通过 USB 自动检测。"},
+"kalkan.not_detected":{pt:"não encontrada",en:"not detected",es:"no detectada",ja:"検出されていません",zh:"未检测到"},
 "mancer.add_section":{pt:"Adicionar dispositivo",en:"Add device",es:"Añadir dispositivo",ja:"デバイスを追加",zh:"添加设备"},
 "mancer.temp":{pt:"Temperatura enviada",en:"Temperature sent",es:"Temperatura enviada",ja:"送信中の温度",zh:"已发送的温度"},
 "mancer.chip":{pt:"Watercooler",en:"Watercooler",es:"Watercooler",ja:"水冷クーラー",zh:"水冷"},
@@ -902,11 +952,34 @@ function renderConfig() {
   $("#steamLocal").hidden = cfg.steam.fonte === "web";
   $("#mancerCard").hidden = !cfg.mancer.ativado;
   $("#addMancerRow").hidden = cfg.mancer.ativado;
-  $("#noDevicesToAdd").hidden = !cfg.mancer.ativado;
+  renderKalkan();
+  $("#noDevicesToAdd").hidden = !(cfg.mancer.ativado && cfg.kalkan.ativado);
   renderScreens();
   renderDevices();
   renderCustomBg();
   renderCustomEditor();
+}
+
+// ---------- tela do water cooler (Kalkan/GAMDIAS)
+// O aparelho é achado sozinho: ele aparece na lista de dispositivos do estado
+// quando está plugado, e some quando não está. O cartão segue essa presença.
+function kalkanDevice() {
+  return ((state && state.dispositivos) || []).find(d => d.id === "kalkan");
+}
+function renderKalkan() {
+  if (!cfg || !cfg.kalkan) return;
+  const dev = kalkanDevice();
+  const ligado = !!cfg.kalkan.ativado;
+  $("#kalkanCard").hidden = !(ligado && dev);
+  $("#addKalkanRow").hidden = ligado;
+  if (!document.activeElement || document.activeElement.id !== "kalkanBrightness") {
+    $("#kalkanBrightness").value = cfg.kalkan.brilho;
+  }
+  $("#kalkanBrightnessOut").textContent = cfg.kalkan.brilho + "%";
+  if (dev) {
+    $("#kalkanStatus").textContent = dev.status_texto || dev.status || "—";
+    $("#kalkanModel").textContent = dev.nome || t("kalkan.not_detected");
+  }
 }
 
 // ---------- lista de telas
@@ -985,6 +1058,7 @@ function renderScreens() {
     box.appendChild(row);
   });
   updateBadges();
+
 }
 
 function badgeFor(key) {
@@ -1636,6 +1710,7 @@ function renderState() {
     };
   } else if (box.innerHTML) box.innerHTML = "";
 
+  renderKalkan();
   updateBadges();
 }
 
@@ -1725,6 +1800,16 @@ $("#btnTempDisable").onclick = async () => {
   try { await api("/api/acao", {method:"POST", body:{acao:"remover_sensores"}}); }
   catch (e) { toast(e.message, false); return; }
   acompanhaSensores(false);
+};
+$("#btnKalkanAdd").onclick = async () => {
+  cfg.kalkan.ativado = true;
+  try { cfg = await api("/api/config", {method:"PUT", body: cfg}); renderConfig(); toast(t("toast.saved")); }
+  catch (e) { toast(t("toast.not_saved", e.message), false); }
+};
+$("#btnKalkanRemove").onclick = async () => {
+  cfg.kalkan.ativado = false;
+  try { cfg = await api("/api/config", {method:"PUT", body: cfg}); renderConfig(); toast(t("toast.saved")); }
+  catch (e) { toast(t("toast.not_saved", e.message), false); }
 };
 $("#btnMancerAdd").onclick = async () => {
   cfg.mancer.ativado = true;
