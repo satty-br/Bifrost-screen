@@ -306,12 +306,13 @@ func widgetNet(dc *gg.Context, x, y, w, h float64, in Input, st wStyle) {
 	text(dc, i18n.T(in.Lang, "system.net"), x+10, y+8, fl, colDim)
 	down, up := rate(in.System.NetDown), rate(in.System.NetUp)
 	fv := valueFace(st, clampF(h*0.22, 10, 14))
-	arrow(dc, x+10, y+h*0.55, 8, true, colFg)
-	text(dc, ellipsize(dc, down, fv, w-30), x+24, y+h*0.55-8, fv, colFg)
-	if h > 46 {
-		arrow(dc, x+10, y+h-16, 8, false, st.Accent)
-		text(dc, ellipsize(dc, up, fv, w-30), x+24, y+h-24, fv, st.Accent)
-	}
+	ay := y + h*0.55
+	// download à esquerda, upload à direita — lado a lado, como na tela "Sistema".
+	half := (w - 20) / 2
+	arrow(dc, x+10, ay, 8, true, colFg)
+	text(dc, ellipsize(dc, down, fv, half-14), x+24, ay-8, fv, colFg)
+	arrow(dc, x+10+half+12, ay, 8, false, st.Accent)
+	text(dc, ellipsize(dc, up, fv, half-14), x+24+half+12, ay-8, fv, st.Accent)
 }
 
 func widgetUptime(dc *gg.Context, x, y, w, h float64, in Input, st wStyle) {
