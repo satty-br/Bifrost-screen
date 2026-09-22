@@ -43,6 +43,10 @@ type Reader struct {
 	info    Info
 	err     string
 	backend string
+	// rawPos/rawAt guardam a última posição realmente diferente que o player
+	// reportou (e quando), pra detectar quando a leitura crua ficou "grudada".
+	rawPos time.Duration
+	rawAt  time.Time
 }
 
 func (r *Reader) Get() Info {
@@ -63,9 +67,35 @@ func (r *Reader) set(info Info, err error) {
 	if err != nil {
 		r.err = err.Error()
 		r.info = Info{}
+		r.rawAt = time.Time{}
 		return
 	}
 	r.err = ""
+
+	if !info.HasSession {
+		r.rawAt = time.Time{}
+	} else {
+		sameTrack := r.info.HasSession &&
+			r.info.Title == info.Title && r.info.Artist == info.Artist &&
+			r.info.Album == info.Album && r.info.App == info.App
+
+		if !sameTrack || r.rawAt.IsZero() || info.Position != r.rawPos {
+			// Posição realmente nova (faixa trocou, sessão nova ou o player
+			// reportou um valor diferente): vira a referência daqui pra frente.
+			r.rawPos, r.rawAt = info.Position, info.UpdatedAt
+		} else if info.Playing {
+			// Alguns players (sobretudo vídeo em navegador) só empurram a
+			// posição pro SO de vez em quando, então a leitura crua fica
+			// parada por vários polls seguidos mesmo com a mídia tocando.
+			// Extrapola a partir da última leitura que de fato mudou, senão
+			// o contador na tela trava.
+			info.Position = r.rawPos + info.UpdatedAt.Sub(r.rawAt)
+			if info.Duration > 0 && info.Position > info.Duration {
+				info.Position = info.Duration
+			}
+		}
+	}
+
 	info.PositionS = info.Position.Seconds()
 	info.DurationS = info.Duration.Seconds()
 	info.HasCover = info.Cover != nil

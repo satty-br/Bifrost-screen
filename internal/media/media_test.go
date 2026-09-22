@@ -69,3 +69,39 @@ func TestReaderGetSetLastError(t *testing.T) {
 		t.Error("erro deveria limpar a sessão")
 	}
 }
+
+// Reproduz o "contador não atualiza": alguns players (vídeo em navegador,
+// por ex.) só reportam a posição pro SO de vez em quando, então a leitura
+// crua chega igualzinha em vários polls seguidos mesmo com a mídia tocando.
+func TestReaderSetExtrapolatesPosicaoTravada(t *testing.T) {
+	var r Reader
+	base := time.Now()
+	track := Info{HasSession: true, Playing: true, Title: "Vídeo", Position: 10 * time.Second, Duration: 300 * time.Second, UpdatedAt: base}
+	r.set(track, nil)
+	if got := r.Get().Position; got != 10*time.Second {
+		t.Fatalf("posição inicial = %v, esperava 10s", got)
+	}
+
+	// O player não atualizou a posição crua, mas continua "tocando" 4s depois.
+	track.UpdatedAt = base.Add(4 * time.Second)
+	r.set(track, nil)
+	if got := r.Get().Position; got != 14*time.Second {
+		t.Errorf("posição travada deveria ser extrapolada, veio %v (esperava 14s)", got)
+	}
+
+	// Um novo poll, ainda sem a posição crua mudar.
+	track.UpdatedAt = base.Add(7 * time.Second)
+	r.set(track, nil)
+	if got := r.Get().Position; got != 17*time.Second {
+		t.Errorf("posição travada deveria continuar avançando, veio %v (esperava 17s)", got)
+	}
+
+	// Quando o player finalmente reporta um valor novo (seek ou atualização
+	// de verdade), essa passa a ser a referência.
+	track.Position = 50 * time.Second
+	track.UpdatedAt = base.Add(8 * time.Second)
+	r.set(track, nil)
+	if got := r.Get().Position; got != 50*time.Second {
+		t.Errorf("posição nova reportada deveria ser respeitada, veio %v (esperava 50s)", got)
+	}
+}
